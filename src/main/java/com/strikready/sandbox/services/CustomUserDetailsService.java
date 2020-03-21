@@ -6,8 +6,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.strikready.sandbox.models.Organization;
 import com.strikready.sandbox.models.Role;
 import com.strikready.sandbox.models.User;
+import com.strikready.sandbox.repositories.OrganizationRepository;
 import com.strikready.sandbox.repositories.RoleRepository;
 import com.strikready.sandbox.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,6 +29,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 	
 	@Autowired
 	private RoleRepository roleRepository;
+
+	@Autowired
+	private OrganizationRepository organizationRepository;
 	
 	@Autowired
 	private PasswordEncoder bCryptPasswordEncoder;
@@ -37,8 +42,18 @@ public class CustomUserDetailsService implements UserDetailsService {
 	
 	public void saveUser(User user) {
 	    user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
-	    user.setEnabled(true);
-	    Role userRole = roleRepository.findByRole("Admin");
+	    user.setEnabled(false);
+	    Role userRole = roleRepository.findByRole("User");
+		String userEmail=user.getEmail();
+		String domain = userEmail.substring(userEmail .indexOf("@") + 1);
+		Organization organization = organizationRepository.findByDomain(domain);
+		if(organization==null){
+			organization=new Organization();
+			organization.setName(user.getOrgname());
+			organization.setDomain(domain);
+			organizationRepository.save(organization);
+		}
+		user.setOrganizations(new HashSet<>(Arrays.asList(organization)));
 	    user.setRoles(new HashSet<>(Arrays.asList(userRole)));
 	    userRepository.save(user);
 	}
