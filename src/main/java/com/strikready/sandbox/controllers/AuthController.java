@@ -4,7 +4,10 @@ import static org.springframework.http.ResponseEntity.ok;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
+import com.strikready.sandbox.models.Organization;
+import com.strikready.sandbox.models.Role;
 import com.strikready.sandbox.models.User;
 import com.strikready.sandbox.repositories.UserRepository;
 import com.strikready.sandbox.services.CustomUserDetailsService;
@@ -46,10 +49,18 @@ public class AuthController {
 		try {
 			String username = data.getEmail();
 			authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, data.getPassword()));
+			User user= this.users.findByEmail(username);
 			String token = jwtTokenProvider.createToken(username, this.users.findByEmail(username).getRoles());
+			Set<Role> role=user.getRoles();
+			Set<Organization> organizations=user.getOrganizations();
 			Map<Object, Object> model = new HashMap<>();
 			model.put("username", username);
 			model.put("token", token);
+			model.put("role", role.iterator().next().getRole());
+			model.put("organizations", organizations.iterator().next().getName());
+			model.put("firstname", user.getFirstname());
+			model.put("lastname", user.getLastname());
+			System.out.println(model);
 			return ok(model);
 		} catch (AuthenticationException e) {
 			throw new BadCredentialsException("Invalid email/password supplied");
