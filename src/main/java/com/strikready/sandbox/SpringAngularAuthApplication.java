@@ -6,6 +6,7 @@ import com.strikready.sandbox.models.User;
 import com.strikready.sandbox.repositories.OrganizationRepository;
 import com.strikready.sandbox.repositories.RoleRepository;
 import com.strikready.sandbox.repositories.UserRepository;
+import com.strikready.sandbox.services.CustomUserDetailsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -18,7 +19,11 @@ import java.util.HashSet;
 @SpringBootApplication
 public class SpringAngularAuthApplication {
 	@Autowired
+	private CustomUserDetailsService customUserDetailsService;
+
+	@Autowired
 	private UserRepository userRepository;
+
 
 	public static void main(String[] args) {
 		SpringApplication.run(SpringAngularAuthApplication.class, args);
@@ -56,13 +61,16 @@ public class SpringAngularAuthApplication {
 			if(user==null) {
 				user=new User();
 				user.setEmail("admin@sandbox.com");
+				user.setFirstName("Admin");
+				user.setLastName("");
+				user.setOrgName("Sandbox");
 				user.setPassword("password");
 				user.setEnabled(true);
 				adminRole = roleRepository.findByRole("Admin");
 				organization = organizationRepository.findByDomain("admin@sandbox.com");
 				user.setRoles(new HashSet<>(Arrays.asList(adminRole)));
 				user.setOrganizations(new HashSet<>(Arrays.asList(organization)));
-				userRepository.save(user);
+				customUserDetailsService.savAdmin(user);
 			}
 		};
 

@@ -49,7 +49,7 @@ public class CustomUserDetailsService implements UserDetailsService {
 		Organization organization = organizationRepository.findByDomain(domain);
 		if(organization==null){
 			organization=new Organization();
-			organization.setName(user.getOrgname());
+			organization.setName(user.getOrgName());
 			organization.setDomain(domain);
 			organizationRepository.save(organization);
 		}
@@ -57,7 +57,12 @@ public class CustomUserDetailsService implements UserDetailsService {
 	    user.setRoles(new HashSet<>(Arrays.asList(userRole)));
 	    userRepository.save(user);
 	}
-	
+
+	public void savAdmin(User user) {
+		user.setPassword(bCryptPasswordEncoder.encode(user.getPassword()));
+		userRepository.save(user);
+	}
+
 	@Override
 	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
 

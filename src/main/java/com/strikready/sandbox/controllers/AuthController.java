@@ -58,9 +58,8 @@ public class AuthController {
 			model.put("token", token);
 			model.put("role", role.iterator().next().getRole());
 			model.put("organizations", organizations.iterator().next().getName());
-			model.put("firstname", user.getFirstname());
-			model.put("lastname", user.getLastname());
-			System.out.println(model);
+			model.put("firstname", user.getFirstName());
+			model.put("lastname", user.getLastName());
 			return ok(model);
 		} catch (AuthenticationException e) {
 			throw new BadCredentialsException("Invalid email/password supplied");
@@ -77,6 +76,14 @@ public class AuthController {
 		userService.saveUser(user);
 		Map<Object, Object> model = new HashMap<>();
 		model.put("message", "User registered successfully");
+		return ok(model);
+	}
+
+	@SuppressWarnings("rawtypes")
+	@PostMapping("/signout")
+	public ResponseEntity signout() {
+		Map<Object, Object> model = new HashMap<>();
+		model.put("message", "User log out successfully");
 		return ok(model);
 	}
 }
