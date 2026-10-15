@@ -91,6 +91,13 @@ public class HarvestController {
 		s.setFirstPage(changes.getFirstPage());
 		s.setMaxPages(changes.getMaxPages());
 		s.setUrls(changes.getUrls());
+		s.setFormPageUrl(changes.getFormPageUrl());
+		s.setFormSelector(changes.getFormSelector());
+		s.setFromField(changes.getFromField());
+		s.setToField(changes.getToField());
+		s.setExtraFields(changes.getExtraFields());
+		s.setNextPageSelector(changes.getNextPageSelector());
+		s.setTooManyResultsPattern(changes.getTooManyResultsPattern());
 		s.setStartDate(changes.getStartDate());
 		s.setWindowDays(changes.getWindowDays());
 		s.setOverlapDays(changes.getOverlapDays());
@@ -133,6 +140,21 @@ public class HarvestController {
 		out.put("enqueued", discovery.discover(id, true));
 		out.put("source", find(id));
 		return out;
+	}
+
+	/**
+	 * Tries the source against the live site for one date range and returns
+	 * the detected form and the documents found. Nothing is queued.
+	 */
+	@PostMapping("/sources/{id}/preview")
+	public Map<String, Object> preview(@PathVariable String id, @RequestParam String from, @RequestParam String to,
+			@RequestParam(defaultValue = "50") int limit) {
+		LocalDate f = LocalDate.parse(from);
+		LocalDate t = LocalDate.parse(to);
+		if (t.isBefore(f)) {
+			throw new IllegalArgumentException("to is before from");
+		}
+		return discovery.preview(id, f, t, limit);
 	}
 
 	@GetMapping("/sources/{id}/plan")
@@ -208,6 +230,19 @@ public class HarvestController {
 			}
 			DateTimeFormatter.ofPattern(s.getDateFormat());
 			Pattern.compile(s.getLinkPattern() == null ? ".*" : s.getLinkPattern());
+		} else if (s.getType() == HarvestSource.Type.SEARCH_FORM) {
+			if (s.getFormPageUrl() == null) {
+				throw new IllegalArgumentException("formPageUrl is required");
+			}
+			fetcher.validate(s.getFormPageUrl());
+			if (s.getStartDate() == null) {
+				throw new IllegalArgumentException("startDate is required");
+			}
+			DateTimeFormatter.ofPattern(s.getDateFormat());
+			Pattern.compile(s.getLinkPattern() == null ? ".*" : s.getLinkPattern());
+			if (s.getTooManyResultsPattern() != null) {
+				Pattern.compile(s.getTooManyResultsPattern());
+			}
 		} else {
 			for (String u : s.getUrls()) {
 				fetcher.validate(u);

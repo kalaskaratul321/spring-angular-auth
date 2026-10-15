@@ -48,8 +48,6 @@ public class HtmlListingConnector implements SourceConnector {
 		if (source.getUrlTemplate() == null) {
 			throw new IllegalArgumentException("Source " + source.getName() + " has no urlTemplate");
 		}
-		Pattern linkPattern = Pattern.compile(source.getLinkPattern() == null ? ".*" : source.getLinkPattern());
-		String selector = source.getLinkSelector() == null ? "a[href]" : source.getLinkSelector();
 		boolean paged = source.getUrlTemplate().contains("{page}");
 		int lastPage = paged ? source.getFirstPage() + Math.max(1, source.getMaxPages()) - 1 : source.getFirstPage();
 
@@ -69,22 +67,47 @@ public class HtmlListingConnector implements SourceConnector {
 			Document html = Jsoup.parse(new String(listing.getContent(), StandardCharsets.UTF_8),
 					listing.getResolvedUrl());
 			int before = found.size();
-			for (Element a : html.select(selector)) {
-				String href = a.absUrl("href");
-				if (href.isEmpty() || !linkPattern.matcher(href).find() || !allowed(href)) {
-					continue;
-				}
-				String key = UrlKeys.normalise(href);
-				if (!found.containsKey(key)) {
-					String text = a.text().trim();
-					found.put(key, new DiscoveredDocument(href, text.isEmpty() ? null : text));
-				}
-			}
+			collectLinks(html, source, fetcher, found);
 			if (found.size() == before) {
 				break; // empty page, or the site ignores {page} and repeats itself
 			}
 		}
 		return new ArrayList<>(found.values());
+	}
+
+	/**
+	 * Adds the document links on {@code page} matching the source's
+	 * {@code linkSelector}/{@code linkPattern} on allowed hosts, keyed by
+	 * document identity so the same judgment is listed once.
+	 */
+	static void collectLinks(Document page, HarvestSource source, OfficialSourceFetcher fetcher,
+			Map<String, DiscoveredDocument> found) {
+		Pattern linkPattern = Pattern.compile(source.getLinkPattern() == null ? ".*" : source.getLinkPattern());
+		String selector = source.getLinkSelector() == null ? "a[href]" : source.getLinkSelector();
+		for (Element a : page.select(selector)) {
+			String href = a.absUrl("href");
+			if (href.isEmpty() || !linkPattern.matcher(href).find() || !allowed(href, fetcher)) {
+				continue;
+			}
+			String key = UrlKeys.identity(href);
+			if (!found.containsKey(key)) {
+				found.put(key, new DiscoveredDocument(href, titleHint(a)));
+			}
+		}
+	}
+
+	/** Link text, or the text of its table row when the link itself is just "View"/"PDF". */
+	private static String titleHint(Element a) {
+		String text = a.text().trim();
+		if (text.length() > 8 && !text.matches("(?i)view|download|pdf|open|click here")) {
+			return text;
+		}
+		Element row = a.closest("tr");
+		String rowText = row == null ? text : row.text().trim();
+		if (rowText.isEmpty()) {
+			return null;
+		}
+		return rowText.length() > 300 ? rowText.substring(0, 300) : rowText;
 	}
 
 	static String expand(HarvestSource source, HarvestWindow window, int page) {
@@ -96,7 +119,7 @@ public class HtmlListingConnector implements SourceConnector {
 		return url;
 	}
 
-	private boolean allowed(String href) {
+	private static boolean allowed(String href, OfficialSourceFetcher fetcher) {
 		try {
 			URL u = new URL(href);
 			return ("https".equals(u.getProtocol()) || "http".equals(u.getProtocol()))

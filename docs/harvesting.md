@@ -103,47 +103,83 @@ in a `URL_LIST`, an official bulk-data channel, or add a connector for that
 site (implement `SourceConnector`). Scanned PDFs without a text layer are
 imported with metadata only (no OCR).
 
+## Search-form sources (`SEARCH_FORM`)
+
+For sites whose judgments are only reachable through a search form, the
+`SearchFormConnector` submits the form once per date window, like a browser:
+
+- loads `formPageUrl` with a cookie session and picks the form (`formSelector`,
+  or the first form with From/To date fields);
+- finds the date inputs from their name, id, placeholder, class, `<label>` or
+  the neighbouring table cell ("From Date" / "To Date"), unless `fromField` /
+  `toField` are set; `<input type=date>` gets ISO dates, others `dateFormat`;
+- sends what a browser sends: hidden fields (CSRF tokens), selected options,
+  checked boxes and the submit button, overridden by `extraFields`
+  (e.g. `{"bench": "N"}`); the form page is reloaded before every submission
+  so single-use tokens stay valid;
+- collects links matching `linkSelector` / `linkPattern` (title hint = the
+  result row text) and follows `nextPageSelector` links up to `maxPages`;
+- when the page matches `tooManyResultsPattern`, splits the window in half,
+  down to a single day (then fails, asking for a narrower `extraFields`);
+- refuses forms with a captcha (image/recaptcha/`captcha` fields) with a clear
+  error instead of retrying them.
+
+Not supported: results loaded by JavaScript/AJAX after the page loads, and
+"next page" buttons that re-POST the form (ASP.NET `__doPostBack`). Both need a
+site-specific connector.
+
 ## Bombay High Court
 
-A source named `bombay-high-court-judgments` is created at startup from
-`src/main/resources/kg/harvest-sources.json`, **disabled**, because its
-listing URL has not been verified yet. What is known about the site:
+`bombay-high-court-judgments` is seeded (disabled) as a `SEARCH_FORM` source:
 
-- Judgment PDFs are served as
-  `https://bombayhighcourt.nic.in/generatenewauth.php?bhcpar=<base64>`. The
-  base64 decodes to e.g.
-  `path=./writereaddata/data/judgements/2007/&fname=OSSJ111703.pdf&smflag=N&rjuddate=19/08/2014&uploaddt=&spassphrase=240825200815&...`.
-  `spassphrase` changes between listings, so for this host the dedup key is
-  the decoded `path` + `fname`; the same judgment listed again with a new
-  token is not queued twice. If a queued link expired before a worker got to
-  it, the next discovery that sees a fresh link for the same file swaps it in
-  and re-queues the task.
-- The seeded config picks links with `a[href*=generatenewauth.php]`, starts at
-  2000-01-01 in 7-day windows, re-checks the last 10 days, and leaves
-  `defaultCourtCode` empty so the parser assigns the bench (Mumbai / Nagpur /
-  Aurangabad / Kolhapur) from each judgment's cause title.
-- The site's free-text judgment search redirects to the eCourts judgment
-  search (captcha), so it is not usable for crawling.
+| Setting | Value | Why |
+|---|---|---|
+| `formPageUrl` | `https://bombayhighcourt.nic.in/ord_qry.php` | The court's unified order/judgment search, which has From Date / To Date fields |
+| date fields | auto-detected | Field names could not be inspected from the build environment |
+| `dateFormat` | `dd-MM-yyyy` | Indian date format used on the site; change if the preview shows otherwise |
+| `linkSelector` / `linkPattern` | `a[href*=generatenewauth.php]` / `generatenewauth\.php\?bhcpar=` | Judgment PDFs are served this way |
+| `tooManyResultsPattern` | `too many results/records`, `refine your search` | The site asks to refine large searches |
+| `startDate`, `windowDays`, `overlapDays` | 2000-01-01, 7, 10 | Adjust as needed |
+| `defaultCourtCode` | empty | The parser assigns the bench from each judgment |
 
-To activate it: open the court's date-wise judgments page in a browser, run a
-search for a date range, and copy the results URL. If it is a plain GET URL,
-replace the dates (and page number, if any) with `{from}`, `{to}`, `{page}`,
-check `dateFormat`, then:
+Judgment links carry a changing `spassphrase` token, so they are de-duplicated
+by the file path + name decoded from `bhcpar`; a queued link that expired is
+replaced by the fresh link on the next discovery.
+
+The site also runs on `bombayhighcourt.gov.in` (`/bhc/judgments`). If the
+`.nic.in` form moves or stops working, point `formPageUrl` there and preview
+again.
+
+**Activate it** (from a machine that can reach the court site):
 
 ```bash
 ID=$(curl -s -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources \
   | jq -r '.[] | select(.name=="bombay-high-court-judgments") | .id')
-# PUT the full config with urlTemplate set (PUT replaces the config fields)
-curl -XPUT localhost:8080/api/kg/harvest/sources/$ID -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' -d @bhc-source.json
-curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/plan   # check windows
-curl -XPOST -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/discover
+
+# 1. Dry run for a few days: shows the detected form fields and the links found
+curl -XPOST -H "Authorization: Bearer $TOKEN" \
+  "localhost:8080/api/kg/harvest/sources/$ID/preview?from=2024-01-01&to=2024-01-03"
+```
+
+Check in the response:
+- `form.captcha` is `false`, and `form.fromField` / `form.toField` are the date
+  inputs (otherwise set `fromField`, `toField`, `formSelector` with PUT);
+- `form.fieldsSent` has sensible defaults (bench / side / judgment-only
+  selects; override with `extraFields`);
+- `documents` contains `generatenewauth.php?bhcpar=` links. If `found` is 0,
+  open the same search in a browser and compare the date format and fields.
+
+```bash
+# 2. Optionally import one found link to check parsing
+curl -XPOST localhost:8080/api/kg/import -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{"url": "<one documents[].url>"}'
+
+# 3. Start harvesting (kg.harvest.enabled=true on the crawling instance)
 curl -XPOST -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/resume
 ```
 
-If the results page is produced by a POST form or needs a captcha, the
-generic listing connector cannot read it; a Bombay-HC-specific
-`SourceConnector` that submits the form is needed instead.
+If the preview reports a captcha, this form cannot be harvested automatically;
+use an official bulk source or URL lists instead.
 
 ## Admin API (`/api/kg/harvest`, Admin only)
 
@@ -154,6 +190,7 @@ generic listing connector cannot read it; a Bombay-HC-specific
 | POST | `/sources/{id}/pause`, `/resume` | Stop / restart a source |
 | POST | `/sources/{id}/reset` | Restart the walk from `startDate` (imported docs still skipped) |
 | POST | `/sources/{id}/discover` | Run discovery now |
+| POST | `/sources/{id}/preview?from=&to=&limit=` | Dry run on the live site: detected form + documents found, nothing queued |
 | GET | `/sources/{id}/plan` | Windows the next run would read |
 | GET | `/stats?sourceId=` | Task counts by status |
 | GET | `/tasks?status=DEAD&sourceId=` | Inspect tasks (e.g. failures with `lastError`) |

@@ -3,11 +3,15 @@ package com.strikready.sandbox.services.kg.importer;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
@@ -83,23 +87,73 @@ public class OfficialSourceFetcher {
 	}
 
 	public FetchedDocument fetch(String url) throws IOException {
+		return fetch(url, null);
+	}
+
+	/** GET with cookies kept in {@code session} (may be null). */
+	public FetchedDocument fetch(String url, HttpSession session) throws IOException {
+		return request(url, "GET", null, session);
+	}
+
+	/**
+	 * Submits an HTML form (application/x-www-form-urlencoded). A POST that is
+	 * answered with a redirect is followed with a GET, as browsers do.
+	 */
+	public FetchedDocument submitForm(String url, String method, List<String[]> fields, HttpSession session)
+			throws IOException {
+		String query = encode(fields);
+		if ("GET".equalsIgnoreCase(method)) {
+			String sep = url.contains("?") ? "&" : "?";
+			return request(query.isEmpty() ? url : url + sep + query, "GET", null, session);
+		}
+		return request(url, "POST", query.getBytes(StandardCharsets.UTF_8), session);
+	}
+
+	private FetchedDocument request(String url, String method, byte[] body, HttpSession session) throws IOException {
 		URL current = validate(url);
+		String currentMethod = method;
+		byte[] currentBody = body;
 		for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
-			throttle(current.getHost().toLowerCase(Locale.ROOT));
+			String host = current.getHost().toLowerCase(Locale.ROOT);
+			throttle(host);
 			HttpURLConnection conn = (HttpURLConnection) current.openConnection();
 			conn.setInstanceFollowRedirects(false);
 			conn.setConnectTimeout(connectTimeoutMs);
 			conn.setReadTimeout(readTimeoutMs);
 			conn.setRequestProperty("User-Agent", USER_AGENT);
 			conn.setRequestProperty("Accept", "application/pdf, text/html;q=0.9, text/plain;q=0.8");
+			if (session != null && session.header(host) != null) {
+				conn.setRequestProperty("Cookie", session.header(host));
+			}
+			if ("POST".equals(currentMethod)) {
+				conn.setRequestMethod("POST");
+				conn.setDoOutput(true);
+				conn.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+				conn.setRequestProperty("Referer", current.toString());
+				try (OutputStream out = conn.getOutputStream()) {
+					out.write(currentBody == null ? new byte[0] : currentBody);
+				}
+			}
 			try {
 				int status = conn.getResponseCode();
+				if (session != null) {
+					for (Map.Entry<String, List<String>> h : conn.getHeaderFields().entrySet()) {
+						// Header names are case-insensitive (servers send Set-Cookie, set-cookie, ...).
+						if ("Set-Cookie".equalsIgnoreCase(h.getKey())) {
+							session.store(host, h.getValue());
+						}
+					}
+				}
 				if (status >= 300 && status < 400) {
 					String location = conn.getHeaderField("Location");
 					if (location == null) {
 						throw new IOException("Redirect without Location from " + current);
 					}
 					current = validate(new URL(current, location).toString());
+					if (status != 307 && status != 308) {
+						currentMethod = "GET";
+						currentBody = null;
+					}
 					continue;
 				}
 				if (status != HttpURLConnection.HTTP_OK) {
@@ -109,17 +163,36 @@ public class OfficialSourceFetcher {
 				if (declared > maxBytes) {
 					throw new IOException("Document is " + declared + " bytes, limit is " + maxBytes);
 				}
-				byte[] body;
+				byte[] content;
 				try (InputStream in = conn.getInputStream()) {
-					body = readCapped(in);
+					content = readCapped(in);
 				}
-				return new FetchedDocument(url, current.toString(), conn.getContentType(), body, sha256(body),
+				return new FetchedDocument(url, current.toString(), conn.getContentType(), content, sha256(content),
 						conn.getHeaderField("Last-Modified"), Instant.now());
 			} finally {
 				conn.disconnect();
 			}
 		}
 		throw new IOException("Too many redirects for " + url);
+	}
+
+	static String encode(List<String[]> fields) {
+		if (fields == null) {
+			return "";
+		}
+		StringBuilder sb = new StringBuilder();
+		try {
+			for (String[] f : fields) {
+				if (sb.length() > 0) {
+					sb.append('&');
+				}
+				sb.append(URLEncoder.encode(f[0], "UTF-8")).append('=')
+						.append(URLEncoder.encode(f[1] == null ? "" : f[1], "UTF-8"));
+			}
+		} catch (UnsupportedEncodingException e) {
+			throw new IllegalStateException(e);
+		}
+		return sb.toString();
 	}
 
 	/** Throws IllegalArgumentException unless the URL is on an allowed official host. */

@@ -27,7 +27,10 @@ public class HarvestSourceSeedTest {
 		HarvestSource bhc = sources.get(0);
 		assertEquals("bombay-high-court-judgments", bhc.getName());
 		assertFalse(bhc.isEnabled());
-		assertNull(bhc.getUrlTemplate());
+		assertEquals(HarvestSource.Type.SEARCH_FORM, bhc.getType());
+		assertEquals("https://bombayhighcourt.nic.in/ord_qry.php", bhc.getFormPageUrl());
+		assertEquals(2, bhc.getSeedVersion());
+		assertNull(bhc.getFromField());
 		assertEquals(LocalDate.of(2000, 1, 1), bhc.getStartDate());
 		assertEquals("generatenewauth\\.php\\?bhcpar=", bhc.getLinkPattern());
 	}

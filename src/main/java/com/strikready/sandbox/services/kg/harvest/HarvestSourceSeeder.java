@@ -16,9 +16,10 @@ import org.springframework.stereotype.Component;
 
 /**
  * Adds the predefined harvest sources from {@code kg/harvest-sources.json}
- * if a source with that name does not exist yet. Existing sources (and their
- * checkpoints) are never overwritten; change them through the harvest API.
- * A source without a {@code urlTemplate} is always stored disabled.
+ * if a source with that name does not exist yet. A seeded source is replaced
+ * by a newer {@code seedVersion} only while it has never run, so sources in
+ * use (checkpoints, edits made through the API) are never overwritten.
+ * Seeded sources are always stored disabled: enable them after a preview.
  */
 @Component
 public class HarvestSourceSeeder implements CommandLineRunner {
@@ -40,15 +41,18 @@ public class HarvestSourceSeeder implements CommandLineRunner {
 			});
 		}
 		for (HarvestSource s : sources) {
-			if (sourceRepository.findByName(s.getName()) != null) {
-				continue;
+			HarvestSource existing = sourceRepository.findByName(s.getName());
+			if (existing != null) {
+				if (existing.getSeedVersion() >= s.getSeedVersion() || existing.getLastRunAt() != null) {
+					continue;
+				}
+				s.setId(existing.getId());
 			}
-			if (s.getType() == HarvestSource.Type.HTML_LISTING && s.getUrlTemplate() == null) {
-				s.setEnabled(false);
-				log.info("Harvest source '{}' added disabled: set its urlTemplate via PUT /api/kg/harvest/sources/{{id}}",
-						s.getName());
-			}
+			s.setEnabled(false);
 			sourceRepository.save(s);
+			log.info("Harvest source '{}' (seed v{}) stored disabled; preview it with "
+					+ "POST /api/kg/harvest/sources/{}/preview?from=..&to=.., then /resume", s.getName(),
+					s.getSeedVersion(), s.getId());
 		}
 	}
 }

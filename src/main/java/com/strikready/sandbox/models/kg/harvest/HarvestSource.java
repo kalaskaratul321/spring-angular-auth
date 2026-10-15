@@ -3,7 +3,9 @@ package com.strikready.sandbox.models.kg.harvest;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.strikready.sandbox.models.kg.CaseCategory;
 import org.springframework.data.annotation.Id;
@@ -19,7 +21,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * {@code {page}}; every link on the listing page that matches
  * {@code linkSelector} and {@code linkPattern} becomes a document to import.
  * Templates without date placeholders (e.g. a "latest judgments" page) are
- * read once per run.
+ * read once per run. For {@link Type#SEARCH_FORM} the form on
+ * {@code formPageUrl} is submitted with each window's dates instead.
  */
 @Document(collection = "kg_harvest_sources")
 public class HarvestSource {
@@ -28,7 +31,9 @@ public class HarvestSource {
 		/** Date-paged HTML listing pages on an official site. */
 		HTML_LISTING,
 		/** A fixed list of document URLs, imported once. */
-		URL_LIST
+		URL_LIST,
+		/** A search form (GET or POST) submitted with a date range, e.g. the Bombay High Court search. */
+		SEARCH_FORM
 	}
 
 	public enum Mode {
@@ -53,6 +58,24 @@ public class HarvestSource {
 	private int firstPage = 1;
 	private int maxPages = 50;
 	private List<String> urls = new ArrayList<>();
+
+	// ---- SEARCH_FORM
+	/** Page that contains the search form. */
+	private String formPageUrl;
+	/** CSS selector of the form; empty = the first form that has from/to date fields. */
+	private String formSelector;
+	/** Names of the date inputs; empty = detected from names, ids, placeholders and labels. */
+	private String fromField;
+	private String toField;
+	/** Extra values to set (e.g. bench or judgment type selects), overriding the form's defaults. */
+	private Map<String, String> extraFields = new LinkedHashMap<>();
+	/** CSS selector of the "next page" link in results. */
+	private String nextPageSelector = "a[rel=next], a:matchesOwn((?i)^\\s*(next|›|»|>>)\\s*$)";
+	/** Regex on the result page meaning "narrow your search"; the window is then split in half. */
+	private String tooManyResultsPattern = "(?i)too many (results|records)|refine your search";
+
+	/** Version of the built-in seed this source was created from (see HarvestSourceSeeder). */
+	private int seedVersion;
 
 	// ---- how to walk time
 	/** Oldest date to harvest from. */
@@ -170,6 +193,70 @@ public class HarvestSource {
 
 	public void setUrls(List<String> urls) {
 		this.urls = urls;
+	}
+
+	public String getFormPageUrl() {
+		return formPageUrl;
+	}
+
+	public void setFormPageUrl(String formPageUrl) {
+		this.formPageUrl = formPageUrl;
+	}
+
+	public String getFormSelector() {
+		return formSelector;
+	}
+
+	public void setFormSelector(String formSelector) {
+		this.formSelector = formSelector;
+	}
+
+	public String getFromField() {
+		return fromField;
+	}
+
+	public void setFromField(String fromField) {
+		this.fromField = fromField;
+	}
+
+	public String getToField() {
+		return toField;
+	}
+
+	public void setToField(String toField) {
+		this.toField = toField;
+	}
+
+	public Map<String, String> getExtraFields() {
+		return extraFields;
+	}
+
+	public void setExtraFields(Map<String, String> extraFields) {
+		this.extraFields = extraFields;
+	}
+
+	public String getNextPageSelector() {
+		return nextPageSelector;
+	}
+
+	public void setNextPageSelector(String nextPageSelector) {
+		this.nextPageSelector = nextPageSelector;
+	}
+
+	public String getTooManyResultsPattern() {
+		return tooManyResultsPattern;
+	}
+
+	public void setTooManyResultsPattern(String tooManyResultsPattern) {
+		this.tooManyResultsPattern = tooManyResultsPattern;
+	}
+
+	public int getSeedVersion() {
+		return seedVersion;
+	}
+
+	public void setSeedVersion(int seedVersion) {
+		this.seedVersion = seedVersion;
 	}
 
 	public LocalDate getStartDate() {

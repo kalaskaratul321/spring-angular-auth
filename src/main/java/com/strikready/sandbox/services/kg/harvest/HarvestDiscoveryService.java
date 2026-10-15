@@ -6,7 +6,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.strikready.sandbox.models.kg.harvest.HarvestSource;
 import com.strikready.sandbox.repositories.kg.harvest.HarvestSourceRepository;
@@ -96,6 +98,29 @@ public class HarvestDiscoveryService {
 			release(source, e.getMessage() == null ? e.getClass().getSimpleName() : e.getMessage());
 		}
 		return enqueued;
+	}
+
+	/**
+	 * Dry run: what the connector finds for one window on the live site,
+	 * without queueing anything or touching the checkpoint.
+	 */
+	public Map<String, Object> preview(String sourceId, LocalDate from, LocalDate to, int limit) {
+		HarvestSource source = sourceRepository.findById(sourceId)
+				.orElseThrow(() -> new IllegalArgumentException("Unknown source: " + sourceId));
+		SourceConnector connector = connectorFor(source);
+		Map<String, Object> out = new LinkedHashMap<>();
+		HarvestWindow window = HarvestWindowPlanner.isDated(source) ? new HarvestWindow(from, to)
+				: HarvestWindow.undated();
+		out.put("window", window.toString());
+		try {
+			out.put("form", connector.diagnose(source));
+			List<DiscoveredDocument> docs = connector.discover(source, window);
+			out.put("found", docs.size());
+			out.put("documents", docs.subList(0, Math.min(docs.size(), Math.max(1, limit))));
+		} catch (IOException | RuntimeException e) {
+			out.put("error", e.getMessage() == null ? e.toString() : e.getMessage());
+		}
+		return out;
 	}
 
 	/** Atomically takes the discovery lease if the source is enabled, due and not leased elsewhere. */

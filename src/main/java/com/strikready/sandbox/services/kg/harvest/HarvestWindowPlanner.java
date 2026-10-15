@@ -67,6 +67,9 @@ public final class HarvestWindowPlanner {
 	}
 
 	public static boolean isDated(HarvestSource source) {
+		if (source.getType() == HarvestSource.Type.SEARCH_FORM) {
+			return true;
+		}
 		String t = source.getUrlTemplate();
 		return t != null && (t.contains("{from}") || t.contains("{to}"));
 	}
