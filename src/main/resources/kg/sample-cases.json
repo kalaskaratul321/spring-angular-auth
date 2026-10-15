@@ -1,0 +1,70 @@
+[
+  {
+    "id": "demo-jmfc-ni138",
+    "caseNumber": "SCC/1450/2021",
+    "caseType": "Summary Criminal Case",
+    "title": "Illustrative: A. Traders v. B. Kulkarni (cheque dishonour)",
+    "courtCode": "JMFC-PUNE",
+    "decisionDate": "2023-03-10",
+    "status": "DISPOSED",
+    "outcome": "Convicted",
+    "judges": ["S. R. Deshmukh"],
+    "petitioners": ["A. Traders"],
+    "respondents": ["B. Kulkarni"],
+    "statutes": [{ "act": "Negotiable Instruments Act, 1881", "section": "138" }],
+    "summary": "Complaint for dishonour of cheque issued towards supply of goods."
+  },
+  {
+    "id": "demo-sessions-ni138-appeal",
+    "caseNumber": "Criminal Appeal 210/2023",
+    "caseType": "Criminal Appeal",
+    "title": "Illustrative: B. Kulkarni v. A. Traders (appeal against conviction)",
+    "courtCode": "DSC-PUNE",
+    "decisionDate": "2024-01-22",
+    "status": "DISPOSED",
+    "outcome": "Appeal dismissed",
+    "judges": ["P. V. Joshi"],
+    "petitioners": ["B. Kulkarni"],
+    "respondents": ["A. Traders"],
+    "statutes": [{ "act": "NI Act", "section": "138" }, { "act": "CrPC", "section": "374" }],
+    "appealFromCaseId": "demo-jmfc-ni138"
+  },
+  {
+    "id": "demo-hc-ni138-revision",
+    "caseNumber": "Criminal Revision Application 88/2024",
+    "caseType": "Criminal Revision Application",
+    "title": "Illustrative: B. Kulkarni v. A. Traders (revision)",
+    "courtCode": "BHC-MUM",
+    "decisionDate": "2025-06-05",
+    "status": "DISPOSED",
+    "outcome": "Sentence modified to fine",
+    "judges": ["Hon'ble Mr. Justice R. K. Patil"],
+    "petitioners": ["B. Kulkarni"],
+    "respondents": ["A. Traders"],
+    "statutes": [{ "act": "NI Act", "section": "138" }, { "act": "CrPC", "section": "397" }],
+    "appealFromCaseId": "demo-sessions-ni138-appeal"
+  },
+  {
+    "id": "demo-maharera-possession",
+    "caseNumber": "CC006000000123456",
+    "caseType": "Complaint",
+    "title": "Illustrative: Allottee v. XYZ Developers (delayed possession)",
+    "courtCode": "MAHARERA",
+    "decisionDate": "2024-09-12",
+    "status": "DISPOSED",
+    "outcome": "Interest for delayed possession awarded",
+    "statutes": [{ "act": "RERA", "section": "18" }],
+    "summary": "Promoter failed to hand over possession of flat by agreed date."
+  },
+  {
+    "id": "demo-tahsildar-mutation",
+    "caseNumber": "RTS/45/2022",
+    "caseType": "RTS Appeal",
+    "title": "Illustrative: Challenge to mutation entry, Survey No. 12, Haveli",
+    "courtCode": "SDO-HAVELI",
+    "decisionDate": "2023-11-02",
+    "status": "DISPOSED",
+    "statutes": [{ "act": "Maharashtra Land Revenue Code, 1966", "section": "247" }],
+    "summary": "Appeal against certification of mutation entry in 7/12 extract."
+  }
+]
