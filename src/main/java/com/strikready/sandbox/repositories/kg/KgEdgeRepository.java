@@ -14,5 +14,9 @@ public interface KgEdgeRepository extends MongoRepository<KgEdge, String> {
 
 	List<KgEdge> findByTargetAndRelation(String target, RelationType relation);
 
+	List<KgEdge> findByTarget(String target);
+
+	boolean existsBySourceAndRelationAndTarget(String source, RelationType relation, String target);
+
 	void deleteBySource(String source);
 }

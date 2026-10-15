@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import com.strikready.sandbox.models.kg.CaseCategory;
 import com.strikready.sandbox.models.kg.CategorySummary;
@@ -24,7 +25,10 @@ import com.strikready.sandbox.models.kg.GraphView;
 import com.strikready.sandbox.models.kg.KgEdge;
 import com.strikready.sandbox.models.kg.LegalCase;
 import com.strikready.sandbox.models.kg.NodeType;
-import com.strikready.sandbox.models.kg.PrecedentLink;
+import com.strikready.sandbox.models.kg.CaseReference;
+import com.strikready.sandbox.models.kg.LegalIssue;
+import com.strikready.sandbox.models.kg.ReferenceView;
+import com.strikready.sandbox.models.kg.VerdictResult;
 import com.strikready.sandbox.models.kg.RelationType;
 import com.strikready.sandbox.models.kg.StatuteReference;
 import com.strikready.sandbox.repositories.kg.CourtRepository;
@@ -33,6 +37,7 @@ import com.strikready.sandbox.repositories.kg.LegalCaseRepository;
 import org.bson.Document;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -40,6 +45,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
 /**
@@ -47,7 +53,8 @@ import org.springframework.stereotype.Service;
  *
  * Cases, courts and edges live in MongoDB. Every ingested case is linked to its
  * court, category, statutes, judges and parties, to the lower-court case it
- * arose from (APPEAL_FROM) and to the precedents it relies on. Category and
+ * arose from (APPEAL_FROM), to the issues it decides, its verdict, and the
+ * judgments it refers to (in-graph cases or external citations). Category and
  * court level are also stored on the case so the graph can be grouped
  * Civil / Criminal / Land / RERA / ... and High Court -> Sessions Court cheaply.
  */
@@ -104,9 +111,20 @@ public class KnowledgeGraphService {
 		if (legalCase.getAppealFromCaseId() != null) {
 			validateAppeal(legalCase);
 		}
+		validateReferences(legalCase);
+
+		List<String> citationKeys = new ArrayList<>();
+		for (String citation : safe(legalCase.getCitations())) {
+			String key = NodeType.slug(citation);
+			if (!key.isEmpty() && !citationKeys.contains(key)) {
+				citationKeys.add(key);
+			}
+		}
+		legalCase.setCitationKeys(citationKeys);
 
 		LegalCase saved = caseRepository.save(legalCase);
 		rebuildEdges(saved);
+		relinkCitations(saved);
 		return saved;
 	}
 
@@ -146,6 +164,35 @@ public class KnowledgeGraphService {
 		}
 	}
 
+	private static void validateReferences(LegalCase legalCase) {
+		for (CaseReference ref : safe(legalCase.getReferences())) {
+			if (ref.getTreatment() != null && !ref.getTreatment().isReferenceTreatment()) {
+				throw new IllegalArgumentException("Invalid reference treatment: " + ref.getTreatment()
+						+ " (use CITES, FOLLOWS, DISTINGUISHES or OVERRULES)");
+			}
+			if (ref.getCaseId() == null && NodeType.slug(ref.getCitation()).isEmpty()) {
+				throw new IllegalArgumentException("A reference needs a caseId or a citation");
+			}
+		}
+	}
+
+	/**
+	 * Earlier cases may have referred to this judgment by citation before it was
+	 * in the graph; point those CITATION edges at the case now.
+	 */
+	private void relinkCitations(LegalCase c) {
+		String self = NodeType.CASE.key(c.getId());
+		for (String key : c.getCitationKeys()) {
+			for (KgEdge e : edgeRepository.findByTarget(NodeType.CITATION.key(key))) {
+				edgeRepository.delete(e);
+				if (!e.getSource().equals(self)
+						&& !edgeRepository.existsBySourceAndRelationAndTarget(e.getSource(), e.getRelation(), self)) {
+					edgeRepository.save(new KgEdge(e.getSource(), e.getRelation(), self, e.getCategory()));
+				}
+			}
+		}
+	}
+
 	private void rebuildEdges(LegalCase c) {
 		String self = NodeType.CASE.key(c.getId());
 		edgeRepository.deleteBySource(self);
@@ -171,18 +218,141 @@ public class KnowledgeGraphService {
 		if (c.getAppealFromCaseId() != null) {
 			addEdge(edges, self, RelationType.APPEAL_FROM, NodeType.CASE.key(c.getAppealFromCaseId()), cat);
 		}
-		for (PrecedentLink p : safe(c.getPrecedents())) {
-			if (p.getCaseId() == null || p.getCaseId().equals(c.getId())) {
-				continue;
+		for (LegalIssue issue : safe(c.getIssues())) {
+			String id = issue.identifier();
+			if (!id.isEmpty()) {
+				addEdge(edges, self, RelationType.RAISES_ISSUE, NodeType.ISSUE.key(id), cat);
 			}
-			RelationType rel = p.getRelation() == null ? RelationType.CITES : p.getRelation();
-			if (rel != RelationType.CITES && rel != RelationType.FOLLOWS && rel != RelationType.DISTINGUISHES
-					&& rel != RelationType.OVERRULES) {
-				throw new IllegalArgumentException("Invalid precedent relation: " + rel);
+		}
+		if (c.getVerdict() != null && c.getVerdict().getResult() != null) {
+			addEdge(edges, self, RelationType.HAS_VERDICT, NodeType.VERDICT.key(c.getVerdict().getResult().name()), cat);
+		}
+		Map<String, LegalCase> byCitation = casesByCitation(c.getReferences());
+		for (CaseReference ref : safe(c.getReferences())) {
+			RelationType rel = ref.getTreatment() == null ? RelationType.CITES : ref.getTreatment();
+			String target = referenceTarget(ref, byCitation);
+			if (!target.equals(self)) {
+				addEdge(edges, self, rel, target, cat);
 			}
-			addEdge(edges, self, rel, NodeType.CASE.key(p.getCaseId()), cat);
 		}
 		edgeRepository.saveAll(edges.values());
+	}
+
+	/** CASE node if the reference resolves to a case in the graph, otherwise a CITATION node. */
+	private static String referenceTarget(CaseReference ref, Map<String, LegalCase> byCitation) {
+		if (ref.getCaseId() != null) {
+			return NodeType.CASE.key(ref.getCaseId());
+		}
+		String key = NodeType.slug(ref.getCitation());
+		LegalCase resolved = byCitation.get(key);
+		return resolved != null ? NodeType.CASE.key(resolved.getId()) : NodeType.CITATION.key(key);
+	}
+
+	private Map<String, LegalCase> casesByCitation(List<CaseReference> refs) {
+		Set<String> keys = new LinkedHashSet<>();
+		for (CaseReference ref : safe(refs)) {
+			if (ref.getCaseId() == null) {
+				keys.add(NodeType.slug(ref.getCitation()));
+			}
+		}
+		Map<String, LegalCase> out = new HashMap<>();
+		if (!keys.isEmpty()) {
+			for (LegalCase c : caseRepository.findByCitationKeysIn(keys)) {
+				for (String k : c.getCitationKeys()) {
+					if (keys.contains(k)) {
+						out.put(k, c);
+					}
+				}
+			}
+		}
+		return out;
+	}
+
+	// ----------------------------------------------- references, issues, search
+
+	/** Judgments this case refers to, resolved to graph cases where possible. */
+	public List<ReferenceView> references(String caseId) {
+		LegalCase c = caseRepository.findById(caseId)
+				.orElseThrow(() -> new IllegalArgumentException("Unknown case: " + caseId));
+		Map<String, LegalCase> byCitation = casesByCitation(c.getReferences());
+		Set<String> ids = new LinkedHashSet<>();
+		for (CaseReference ref : safe(c.getReferences())) {
+			if (ref.getCaseId() != null) {
+				ids.add(ref.getCaseId());
+			}
+		}
+		Map<String, LegalCase> byId = new HashMap<>();
+		for (LegalCase r : caseRepository.findByIdIn(ids)) {
+			byId.put(r.getId(), r);
+		}
+		List<ReferenceView> out = new ArrayList<>();
+		for (CaseReference ref : safe(c.getReferences())) {
+			LegalCase resolved = ref.getCaseId() != null ? byId.get(ref.getCaseId())
+					: byCitation.get(NodeType.slug(ref.getCitation()));
+			out.add(ReferenceView.of(ref, resolved));
+		}
+		return out;
+	}
+
+	/** Later judgments that refer to this case, with how they treated it. */
+	public List<ReferenceView> citedBy(String caseId) {
+		List<KgEdge> incoming = edgeRepository.findByTarget(NodeType.CASE.key(caseId));
+		Map<String, RelationType> treatment = new LinkedHashMap<>();
+		for (KgEdge e : incoming) {
+			if (e.getRelation().isReferenceTreatment()) {
+				treatment.put(NodeType.identifierOf(e.getSource()), e.getRelation());
+			}
+		}
+		List<ReferenceView> out = new ArrayList<>();
+		for (LegalCase c : caseRepository.findByIdIn(treatment.keySet())) {
+			out.add(ReferenceView.of(treatment.get(c.getId()), c));
+		}
+		return out;
+	}
+
+	/** Cases deciding the same issue topic, with their categories, courts and verdicts. */
+	public GraphView issueGraph(String topic, CaseCategory categoryFilter) {
+		String id = NodeType.slug(topic);
+		if (id.isEmpty()) {
+			throw new IllegalArgumentException("Issue topic is required");
+		}
+		return neighbourhood(NodeType.ISSUE.key(id), 2, categoryFilter);
+	}
+
+	/** Cases reported as, or referring to, the given citation. */
+	public GraphView citationGraph(String citation, CaseCategory categoryFilter) {
+		String key = NodeType.slug(citation);
+		List<LegalCase> own = caseRepository.findByCitationKeysIn(Collections.singletonList(key));
+		String node = own.isEmpty() ? NodeType.CITATION.key(key) : NodeType.CASE.key(own.get(0).getId());
+		return neighbourhood(node, 1, categoryFilter);
+	}
+
+	/** Case-insensitive search on title, case number, citation or issue text. */
+	public Page<LegalCase> search(String text, CaseCategory category, VerdictResult verdict, int page, int size) {
+		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 200),
+				Sort.by(Sort.Direction.DESC, "decisionDate"));
+		Criteria criteria = new Criteria();
+		List<Criteria> and = new ArrayList<>();
+		if (text != null && !text.trim().isEmpty()) {
+			String regex = Pattern.quote(text.trim());
+			and.add(new Criteria().orOperator(Criteria.where("title").regex(regex, "i"),
+					Criteria.where("caseNumber").regex(regex, "i"), Criteria.where("citations").regex(regex, "i"),
+					Criteria.where("issues.topic").regex(regex, "i"),
+					Criteria.where("issues.question").regex(regex, "i")));
+		}
+		if (category != null) {
+			and.add(Criteria.where("category").is(category));
+		}
+		if (verdict != null) {
+			and.add(Criteria.where("verdict.result").is(verdict));
+		}
+		if (!and.isEmpty()) {
+			criteria.andOperator(and.toArray(new Criteria[0]));
+		}
+		Query query = new Query(criteria);
+		long total = mongoTemplate.count(query, LegalCase.class);
+		List<LegalCase> content = mongoTemplate.find(query.with(pageable), LegalCase.class);
+		return new PageImpl<>(content, pageable, total);
 	}
 
 	private static void addEdge(Map<String, KgEdge> edges, String source, RelationType rel, String target,
@@ -228,7 +398,7 @@ public class KnowledgeGraphService {
 
 	private static boolean isHub(String key) {
 		NodeType t = NodeType.ofKey(key);
-		return t == NodeType.CATEGORY || t == NodeType.COURT;
+		return t == NodeType.CATEGORY || t == NodeType.COURT || t == NodeType.VERDICT;
 	}
 
 	/**
@@ -278,7 +448,10 @@ public class KnowledgeGraphService {
 
 	// ----------------------------------------------------- category grouping
 
-	/** Case counts per category, broken down by court level, with the most-invoked statutes. */
+	/**
+	 * Case counts per category, broken down by court level and verdict, with the
+	 * most-invoked statutes and most frequently decided issues.
+	 */
 	public List<CategorySummary> categorySummaries() {
 		Map<CaseCategory, CategorySummary> byCategory = new EnumMap<>(CaseCategory.class);
 		for (CaseCategory cat : CaseCategory.values()) {
@@ -304,15 +477,29 @@ public class KnowledgeGraphService {
 			byCategory.get(e.getKey()).setCasesByCourtLevel(sortByRank(e.getValue()));
 		}
 
-		Aggregation statutes = Aggregation.newAggregation(
-				Aggregation.match(Criteria.where("relation").is(RelationType.INVOKES.name())),
-				Aggregation.group("category", "target").count().as("count"),
-				Aggregation.sort(Sort.Direction.DESC, "count"));
-		AggregationResults<Document> statuteResults = mongoTemplate.aggregate(statutes, KgEdge.class, Document.class);
-		for (Document d : statuteResults.getMappedResults()) {
+		Aggregation verdicts = Aggregation.newAggregation(
+				Aggregation.match(Criteria.where("verdict.result").exists(true)),
+				Aggregation.project("category").and("verdict.result").as("verdictResult"),
+				Aggregation.group("category", "verdictResult").count().as("count"));
+		for (Document d : mongoTemplate.aggregate(verdicts, LegalCase.class, Document.class).getMappedResults()) {
 			Document id = (Document) d.get("_id");
 			CaseCategory cat = parseEnum(CaseCategory.class, id.getString("category"), CaseCategory.OTHER);
-			Map<String, Long> top = byCategory.get(cat).getTopStatutes();
+			VerdictResult result = parseEnum(VerdictResult.class, id.getString("verdictResult"), VerdictResult.OTHER);
+			byCategory.get(cat).getCasesByVerdict().merge(result, ((Number) d.get("count")).longValue(), Long::sum);
+		}
+
+		Aggregation topNodes = Aggregation.newAggregation(
+				Aggregation.match(Criteria.where("relation")
+						.in(RelationType.INVOKES.name(), RelationType.RAISES_ISSUE.name())),
+				Aggregation.group("category", "relation", "target").count().as("count"),
+				Aggregation.sort(Sort.Direction.DESC, "count"));
+		for (Document d : mongoTemplate.aggregate(topNodes, KgEdge.class, Document.class).getMappedResults()) {
+			Document id = (Document) d.get("_id");
+			CaseCategory cat = parseEnum(CaseCategory.class, id.getString("category"), CaseCategory.OTHER);
+			CategorySummary summary = byCategory.get(cat);
+			Map<String, Long> top = RelationType.INVOKES.name().equals(id.getString("relation"))
+					? summary.getTopStatutes()
+					: summary.getTopIssues();
 			if (top.size() < 10) {
 				top.put(NodeType.identifierOf(id.getString("target")), ((Number) d.get("count")).longValue());
 			}
@@ -329,7 +516,8 @@ public class KnowledgeGraphService {
 
 	/**
 	 * Subgraph of one category: its most recent cases (optionally at one court
-	 * level) together with their courts, statutes, judges, appeal and precedent links.
+	 * level) together with their courts, statutes, judges, issues, verdicts,
+	 * appeal links and references.
 	 */
 	public GraphView categoryGraph(CaseCategory category, CourtLevel level, int limit) {
 		List<LegalCase> cases = casesInCategory(category, level, 0, limit).getContent();
@@ -419,7 +607,11 @@ public class KnowledgeGraphService {
 					node.getProperties().put("courtLevel", c.getCourtLevel());
 					node.getProperties().put("subCategory", c.getSubCategory());
 					node.getProperties().put("decisionDate", c.getDecisionDate());
-					node.getProperties().put("outcome", c.getOutcome());
+					if (c.getVerdict() != null) {
+						node.getProperties().put("verdict", c.getVerdict().getResult());
+						node.getProperties().put("verdictSummary", c.getVerdict().getSummary());
+					}
+					node.getProperties().put("citations", c.getCitations());
 				}
 			} else if (type == NodeType.COURT) {
 				Court c = courts.get(id);
@@ -432,6 +624,12 @@ public class KnowledgeGraphService {
 				CaseCategory cat = parseEnum(CaseCategory.class, id, CaseCategory.OTHER);
 				node.setLabel(cat.getDisplayName());
 				node.setCategory(cat);
+			} else if (type == NodeType.VERDICT) {
+				VerdictResult r = parseEnum(VerdictResult.class, id, VerdictResult.OTHER);
+				node.setLabel(r.getDisplayName());
+			} else if (type == NodeType.CITATION) {
+				node.setLabel(id.replace('_', ' ').toUpperCase(Locale.ROOT));
+				node.getProperties().put("inGraph", false);
 			} else if (type == NodeType.STATUTE) {
 				node.setLabel(id.replace('_', ' ').replace(":", " s. "));
 			} else {

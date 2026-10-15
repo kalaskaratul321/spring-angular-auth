@@ -1,10 +1,12 @@
 package com.strikready.sandbox.models.kg;
 
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Case counts for one category, broken down by court level (High Court first).
+ * Case counts for one category, broken down by court level (High Court first)
+ * and verdict, plus the statutes and issues that come up most often.
  */
 public class CategorySummary {
 
@@ -12,7 +14,9 @@ public class CategorySummary {
 	private String displayName;
 	private long totalCases;
 	private Map<CourtLevel, Long> casesByCourtLevel = new LinkedHashMap<>();
+	private Map<VerdictResult, Long> casesByVerdict = new EnumMap<>(VerdictResult.class);
 	private Map<String, Long> topStatutes = new LinkedHashMap<>();
+	private Map<String, Long> topIssues = new LinkedHashMap<>();
 
 	public CategorySummary() {
 	}
@@ -52,6 +56,22 @@ public class CategorySummary {
 
 	public void setCasesByCourtLevel(Map<CourtLevel, Long> casesByCourtLevel) {
 		this.casesByCourtLevel = casesByCourtLevel;
+	}
+
+	public Map<VerdictResult, Long> getCasesByVerdict() {
+		return casesByVerdict;
+	}
+
+	public void setCasesByVerdict(Map<VerdictResult, Long> casesByVerdict) {
+		this.casesByVerdict = casesByVerdict;
+	}
+
+	public Map<String, Long> getTopIssues() {
+		return topIssues;
+	}
+
+	public void setTopIssues(Map<String, Long> topIssues) {
+		this.topIssues = topIssues;
 	}
 
 	public Map<String, Long> getTopStatutes() {

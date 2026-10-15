@@ -9,6 +9,8 @@ import java.util.Collections;
 import com.strikready.sandbox.models.kg.CaseCategory;
 import com.strikready.sandbox.models.kg.Classification;
 import com.strikready.sandbox.models.kg.LegalCase;
+import com.strikready.sandbox.models.kg.LegalIssue;
+import com.strikready.sandbox.models.kg.NodeType;
 import com.strikready.sandbox.models.kg.StatuteReference;
 import org.junit.Test;
 
@@ -98,5 +100,23 @@ public class CaseCategoryClassifierTest {
 	public void judgeNamesAreNormalised() {
 		assertEquals("a_b_patil", KnowledgeGraphService.normaliseName("Hon'ble Mr. Justice A. B. Patil"));
 		assertEquals("a_b_patil", KnowledgeGraphService.normaliseName("A.B. Patil"));
+	}
+
+	@Test
+	public void issueTextHelpsClassification() {
+		LegalCase c = legalCase("Complaint", "Allottee v. XYZ Developers");
+		c.setIssues(Collections.singletonList(new LegalIssue("Delay in possession - interest",
+				"Whether the promoter must pay interest for delayed possession", null)));
+		assertEquals(CaseCategory.RERA, classifier.classify(c, null).getCategory());
+	}
+
+	@Test
+	public void issueAndCitationKeysAreStable() {
+		assertEquals("delay_in_possession_interest",
+				new LegalIssue("Delay in Possession - Interest", "ignored when topic set", null).identifier());
+		assertEquals("whether_bail_can_be_granted",
+				new LegalIssue(null, "Whether bail can be granted?", null).identifier());
+		assertEquals("2019_4_scc_197", NodeType.slug("(2019) 4 SCC 197"));
+		assertEquals(NodeType.slug("(2019) 4 SCC 197"), NodeType.slug("2019 (4) SCC 197"));
 	}
 }

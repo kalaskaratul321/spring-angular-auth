@@ -16,14 +16,22 @@ public enum RelationType {
 	INVOLVES_PARTY,
 	/** higher CASE -> lower CASE it arose from (e.g. HC appeal -> Sessions judgment) */
 	APPEAL_FROM,
-	/** CASE -> precedent CASE */
+	/** CASE -> ISSUE */
+	RAISES_ISSUE,
+	/** CASE -> VERDICT */
+	HAS_VERDICT,
+	/** CASE -> referred CASE or CITATION */
 	CITES,
-	/** CASE -> precedent CASE */
+	/** CASE -> referred CASE or CITATION */
 	FOLLOWS,
-	/** CASE -> precedent CASE */
+	/** CASE -> referred CASE or CITATION */
 	DISTINGUISHES,
-	/** CASE -> precedent CASE */
+	/** CASE -> referred CASE or CITATION */
 	OVERRULES,
 	/** lower COURT -> appellate COURT */
-	APPEALS_TO
+	APPEALS_TO;
+
+	public boolean isReferenceTreatment() {
+		return this == CITES || this == FOLLOWS || this == DISTINGUISHES || this == OVERRULES;
+	}
 }

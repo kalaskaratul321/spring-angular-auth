@@ -14,7 +14,9 @@ import com.strikready.sandbox.models.kg.CourtTreeNode;
 import com.strikready.sandbox.models.kg.GraphView;
 import com.strikready.sandbox.models.kg.LegalCase;
 import com.strikready.sandbox.models.kg.NodeType;
+import com.strikready.sandbox.models.kg.ReferenceView;
 import com.strikready.sandbox.models.kg.StatuteReference;
+import com.strikready.sandbox.models.kg.VerdictResult;
 import com.strikready.sandbox.repositories.kg.LegalCaseRepository;
 import com.strikready.sandbox.services.kg.KnowledgeGraphService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -116,6 +118,13 @@ public class KnowledgeGraphController {
 		return graphService.classify(legalCase);
 	}
 
+	@GetMapping("/cases/search")
+	public Page<LegalCase> search(@RequestParam(required = false) String q,
+			@RequestParam(required = false) CaseCategory category, @RequestParam(required = false) VerdictResult verdict,
+			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "20") int size) {
+		return graphService.search(q, category, verdict, page, size);
+	}
+
 	@GetMapping("/cases/{id}")
 	public ResponseEntity<LegalCase> getCase(@PathVariable String id) {
 		return caseRepository.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
@@ -136,6 +145,41 @@ public class KnowledgeGraphController {
 	@GetMapping("/cases/{id}/appeal-chain")
 	public List<LegalCase> appealChain(@PathVariable String id) {
 		return graphService.appealChain(id);
+	}
+
+	@GetMapping("/cases/{id}/references")
+	public List<ReferenceView> references(@PathVariable String id) {
+		return graphService.references(id);
+	}
+
+	@GetMapping("/cases/{id}/cited-by")
+	public List<ReferenceView> citedBy(@PathVariable String id) {
+		return graphService.citedBy(id);
+	}
+
+	// ------------------------------------------------ issues, verdicts, citations
+
+	@GetMapping("/issues/graph")
+	public GraphView issueGraph(@RequestParam String topic, @RequestParam(required = false) CaseCategory category) {
+		return graphService.issueGraph(topic, category);
+	}
+
+	@GetMapping("/verdicts")
+	public List<Map<String, String>> verdicts() {
+		List<Map<String, String>> out = new ArrayList<>();
+		for (VerdictResult v : VerdictResult.values()) {
+			Map<String, String> m = new LinkedHashMap<>();
+			m.put("code", v.name());
+			m.put("name", v.getDisplayName());
+			out.add(m);
+		}
+		return out;
+	}
+
+	@GetMapping("/citations/graph")
+	public GraphView citationGraph(@RequestParam String citation,
+			@RequestParam(required = false) CaseCategory category) {
+		return graphService.citationGraph(citation, category);
 	}
 
 	// ------------------------------------------------------------- statutes

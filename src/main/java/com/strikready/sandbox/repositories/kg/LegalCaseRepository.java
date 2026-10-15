@@ -20,4 +20,6 @@ public interface LegalCaseRepository extends MongoRepository<LegalCase, String> 
 	List<LegalCase> findByAppealFromCaseId(String appealFromCaseId);
 
 	List<LegalCase> findByIdIn(Iterable<String> ids);
+
+	List<LegalCase> findByCitationKeysIn(Iterable<String> citationKeys);
 }

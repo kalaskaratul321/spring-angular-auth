@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
+import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -15,7 +16,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
  * category-wise grouping is a single indexed query.
  */
 @Document(collection = "kg_cases")
-@CompoundIndex(name = "category_level_idx", def = "{'category': 1, 'courtLevel': 1, 'decisionDate': -1}")
+@CompoundIndexes({
+		@CompoundIndex(name = "category_level_idx", def = "{'category': 1, 'courtLevel': 1, 'decisionDate': -1}"),
+		@CompoundIndex(name = "category_verdict_idx", def = "{'category': 1, 'verdict.result': 1}") })
 public class LegalCase {
 
 	@Id
@@ -39,13 +42,20 @@ public class LegalCase {
 	private Integer filingYear;
 	private LocalDate decisionDate;
 	private String status;
-	private String outcome;
+	private Verdict verdict;
 
 	private List<String> judges = new ArrayList<>();
 	private List<String> petitioners = new ArrayList<>();
 	private List<String> respondents = new ArrayList<>();
 	private List<StatuteReference> statutes = new ArrayList<>();
-	private List<PrecedentLink> precedents = new ArrayList<>();
+	private List<LegalIssue> issues = new ArrayList<>();
+	/** Judgments this case refers to, in-graph by caseId or external by citation. */
+	private List<CaseReference> references = new ArrayList<>();
+	/** This judgment's own reported citations, e.g. "2024 SCC OnLine Bom 1234". */
+	private List<String> citations = new ArrayList<>();
+	/** Normalised {@link #citations}, maintained on ingest, used to resolve references. */
+	@Indexed
+	private List<String> citationKeys = new ArrayList<>();
 
 	/** The lower-court case this matter is an appeal/revision/writ against. */
 	@Indexed
@@ -158,12 +168,12 @@ public class LegalCase {
 		this.status = status;
 	}
 
-	public String getOutcome() {
-		return outcome;
+	public Verdict getVerdict() {
+		return verdict;
 	}
 
-	public void setOutcome(String outcome) {
-		this.outcome = outcome;
+	public void setVerdict(Verdict verdict) {
+		this.verdict = verdict;
 	}
 
 	public List<String> getJudges() {
@@ -198,12 +208,36 @@ public class LegalCase {
 		this.statutes = statutes;
 	}
 
-	public List<PrecedentLink> getPrecedents() {
-		return precedents;
+	public List<LegalIssue> getIssues() {
+		return issues;
 	}
 
-	public void setPrecedents(List<PrecedentLink> precedents) {
-		this.precedents = precedents;
+	public void setIssues(List<LegalIssue> issues) {
+		this.issues = issues;
+	}
+
+	public List<CaseReference> getReferences() {
+		return references;
+	}
+
+	public void setReferences(List<CaseReference> references) {
+		this.references = references;
+	}
+
+	public List<String> getCitations() {
+		return citations;
+	}
+
+	public void setCitations(List<String> citations) {
+		this.citations = citations;
+	}
+
+	public List<String> getCitationKeys() {
+		return citationKeys;
+	}
+
+	public void setCitationKeys(List<String> citationKeys) {
+		this.citationKeys = citationKeys;
 	}
 
 	public String getAppealFromCaseId() {

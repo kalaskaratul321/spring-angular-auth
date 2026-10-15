@@ -11,13 +11,14 @@ import java.util.regex.Pattern;
 import com.strikready.sandbox.models.kg.CaseCategory;
 import com.strikready.sandbox.models.kg.Classification;
 import com.strikready.sandbox.models.kg.LegalCase;
+import com.strikready.sandbox.models.kg.LegalIssue;
 import com.strikready.sandbox.models.kg.StatuteReference;
 import org.springframework.stereotype.Component;
 
 /**
  * Rule-based classifier that assigns a {@link CaseCategory} (and a
  * sub-category where possible) to a case from the statutes it invokes, its
- * case type, the forum it was decided in and keywords in its title/summary.
+ * case type, the forum it was decided in and keywords in its title, summary and issues.
  *
  * Signals are weighted: a specific section (e.g. CrPC 125 -> Family) beats a
  * whole act, which beats the case type, which beats free-text keywords. The
@@ -227,6 +228,12 @@ public class CaseCategoryClassifier {
 		if (c.getKeywords() != null) {
 			for (String k : c.getKeywords()) {
 				append(sb, k);
+			}
+		}
+		if (c.getIssues() != null) {
+			for (LegalIssue issue : c.getIssues()) {
+				append(sb, issue.getTopic());
+				append(sb, issue.getQuestion());
 			}
 		}
 		return sb.toString().toLowerCase(Locale.ROOT);
