@@ -1,10 +1,13 @@
 package com.strikready.sandbox.services.kg.harvest;
 
+import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.Locale;
 
 /**
@@ -43,9 +46,69 @@ public final class UrlKeys {
 		}
 	}
 
-	/** Dedup key: SHA-1 of the normalised URL, with the scheme ignored (http/https serve the same file). */
+	/**
+	 * What identifies the document behind a URL: the normalised URL without
+	 * scheme, or a site-specific identity where the URL carries volatile parts.
+	 */
+	public static String identity(String url) {
+		String bhc = bombayHighCourtFile(url);
+		return bhc != null ? "bombayhighcourt:" + bhc : normalise(url).replaceFirst("^https?://", "//");
+	}
+
+	/**
+	 * Bombay High Court serves judgments as
+	 * {@code generatenewauth.php?bhcpar=<base64>}, where the base64 decodes to
+	 * {@code path=./writereaddata/data/judgements/2007/&fname=OSSJ111703.pdf&...&spassphrase=<timestamp>&...}.
+	 * The passphrase changes between listings, so the file is identified by
+	 * path + fname only. Returns null for other URLs.
+	 */
+	static String bombayHighCourtFile(String url) {
+		try {
+			URI u = new URI(url.trim());
+			String host = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.ROOT);
+			if (!host.endsWith("bombayhighcourt.nic.in") && !host.endsWith("bombayhighcourt.gov.in")) {
+				return null;
+			}
+			String param = queryParam(u.getRawQuery(), "bhcpar");
+			if (param == null) {
+				return null;
+			}
+			String decoded = new String(Base64.getMimeDecoder().decode(param), StandardCharsets.UTF_8);
+			String path = queryParam(decoded, "path");
+			String fname = queryParam(decoded, "fname");
+			if (fname == null || fname.isEmpty()) {
+				return null;
+			}
+			String dir = path == null ? "" : path.replaceFirst("^\\./", "").replaceAll("/+$", "");
+			return (dir.isEmpty() ? "" : dir + "/") + fname;
+		} catch (URISyntaxException | IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	private static String queryParam(String query, String name) {
+		if (query == null) {
+			return null;
+		}
+		for (String pair : query.split("&")) {
+			int eq = pair.indexOf('=');
+			if (eq > 0 && pair.substring(0, eq).equals(name)) {
+				try {
+					return URLDecoder.decode(pair.substring(eq + 1), "UTF-8");
+				} catch (UnsupportedEncodingException e) {
+					throw new IllegalStateException(e);
+				}
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Dedup key: SHA-1 of {@link #identity(String)}. Two links to the same
+	 * document get the same key even if the site embeds per-request tokens.
+	 */
 	public static String dedupKey(String url) {
-		String n = normalise(url).replaceFirst("^https?://", "//");
+		String n = identity(url);
 		try {
 			byte[] d = MessageDigest.getInstance("SHA-1").digest(n.getBytes(StandardCharsets.UTF_8));
 			StringBuilder sb = new StringBuilder();

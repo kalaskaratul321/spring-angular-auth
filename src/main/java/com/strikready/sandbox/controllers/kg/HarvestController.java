@@ -111,6 +111,7 @@ public class HarvestController {
 	@PostMapping("/sources/{id}/resume")
 	public HarvestSource resume(@PathVariable String id) {
 		HarvestSource s = find(id);
+		validate(s);
 		s.setEnabled(true);
 		s.setNextRunAt(null);
 		return sourceRepository.save(s);

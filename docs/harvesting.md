@@ -103,6 +103,48 @@ in a `URL_LIST`, an official bulk-data channel, or add a connector for that
 site (implement `SourceConnector`). Scanned PDFs without a text layer are
 imported with metadata only (no OCR).
 
+## Bombay High Court
+
+A source named `bombay-high-court-judgments` is created at startup from
+`src/main/resources/kg/harvest-sources.json`, **disabled**, because its
+listing URL has not been verified yet. What is known about the site:
+
+- Judgment PDFs are served as
+  `https://bombayhighcourt.nic.in/generatenewauth.php?bhcpar=<base64>`. The
+  base64 decodes to e.g.
+  `path=./writereaddata/data/judgements/2007/&fname=OSSJ111703.pdf&smflag=N&rjuddate=19/08/2014&uploaddt=&spassphrase=240825200815&...`.
+  `spassphrase` changes between listings, so for this host the dedup key is
+  the decoded `path` + `fname`; the same judgment listed again with a new
+  token is not queued twice. If a queued link expired before a worker got to
+  it, the next discovery that sees a fresh link for the same file swaps it in
+  and re-queues the task.
+- The seeded config picks links with `a[href*=generatenewauth.php]`, starts at
+  2000-01-01 in 7-day windows, re-checks the last 10 days, and leaves
+  `defaultCourtCode` empty so the parser assigns the bench (Mumbai / Nagpur /
+  Aurangabad / Kolhapur) from each judgment's cause title.
+- The site's free-text judgment search redirects to the eCourts judgment
+  search (captcha), so it is not usable for crawling.
+
+To activate it: open the court's date-wise judgments page in a browser, run a
+search for a date range, and copy the results URL. If it is a plain GET URL,
+replace the dates (and page number, if any) with `{from}`, `{to}`, `{page}`,
+check `dateFormat`, then:
+
+```bash
+ID=$(curl -s -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources \
+  | jq -r '.[] | select(.name=="bombay-high-court-judgments") | .id')
+# PUT the full config with urlTemplate set (PUT replaces the config fields)
+curl -XPUT localhost:8080/api/kg/harvest/sources/$ID -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d @bhc-source.json
+curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/plan   # check windows
+curl -XPOST -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/discover
+curl -XPOST -H "Authorization: Bearer $TOKEN" localhost:8080/api/kg/harvest/sources/$ID/resume
+```
+
+If the results page is produced by a POST form or needs a captcha, the
+generic listing connector cannot read it; a Bombay-HC-specific
+`SourceConnector` that submits the form is needed instead.
+
 ## Admin API (`/api/kg/harvest`, Admin only)
 
 | Method | Path | Purpose |

@@ -1,0 +1,19 @@
+[
+  {
+    "name": "bombay-high-court-judgments",
+    "type": "HTML_LISTING",
+    "enabled": false,
+    "urlTemplate": null,
+    "dateFormat": "dd-MM-yyyy",
+    "linkSelector": "a[href*=generatenewauth.php]",
+    "linkPattern": "generatenewauth\\.php\\?bhcpar=",
+    "firstPage": 1,
+    "maxPages": 100,
+    "startDate": "2000-01-01",
+    "windowDays": 7,
+    "overlapDays": 10,
+    "maxWindowsPerRun": 20,
+    "defaultCourtCode": null,
+    "defaultCategory": null
+  }
+]

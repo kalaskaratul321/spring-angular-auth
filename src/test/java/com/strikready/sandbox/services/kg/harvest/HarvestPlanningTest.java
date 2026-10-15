@@ -102,4 +102,29 @@ public class HarvestPlanningTest {
 		assertTrue(third.getSeconds() >= 960 && third.getSeconds() <= 1440);
 		assertTrue(tenth.getSeconds() <= 43200 * 1.2);
 	}
+
+	@Test
+	public void bombayHighCourtLinksAreKeyedByFileNotToken() {
+		// Real link shape; the base64 decodes to path=./writereaddata/data/judgements/2007/&fname=OSSJ111703.pdf
+		// &smflag=N&rjuddate=19/08/2014&uploaddt=&spassphrase=240825200815&...
+		String a = "https://bombayhighcourt.nic.in/generatenewauth.php?bhcpar="
+				+ "cGF0aD0uL3dyaXRlcmVhZGRhdGEvZGF0YS9qdWRnZW1lbnRzLzIwMDcvJmZuYW1lPU9TU0oxMTE3MDMucGRmJnNtZmxhZz1OJnJqdWRk"
+				+ "YXRlPTE5LzA4LzIwMTQmdXBsb2FkZHQ9JnNwYXNzcGhyYXNlPTI0MDgyNTIwMDgxNSZuY2l0YXRpb249JnNtY2l0YXRpb249JmRpZ2Nl"
+				+ "cnRmbGc9TiZpbnRlcmZhY2U9";
+		assertEquals("writereaddata/data/judgements/2007/OSSJ111703.pdf", UrlKeys.bombayHighCourtFile(a));
+
+		String sameFileOtherToken = "https://bombayhighcourt.nic.in/generatenewauth.php?bhcpar=" + base64(
+				"path=./writereaddata/data/judgements/2007/&fname=OSSJ111703.pdf&smflag=N&rjuddate=19/08/2014"
+						+ "&uploaddt=&spassphrase=999999999999&ncitation=&smcitation=&digcertflg=N&interface=");
+		String otherFile = "https://bombayhighcourt.nic.in/generatenewauth.php?bhcpar=" + base64(
+				"path=./writereaddata/data/judgements/2007/&fname=OSSJ111704.pdf&spassphrase=240825200815");
+		assertEquals(UrlKeys.dedupKey(a), UrlKeys.dedupKey(sameFileOtherToken));
+		assertNotEquals(UrlKeys.dedupKey(a), UrlKeys.dedupKey(otherFile));
+		assertEquals(null, UrlKeys.bombayHighCourtFile("https://example.gov.in/generatenewauth.php?bhcpar=x"));
+	}
+
+	private static String base64(String s) {
+		return java.net.URLEncoder.encode(java.util.Base64.getEncoder()
+				.encodeToString(s.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+	}
 }

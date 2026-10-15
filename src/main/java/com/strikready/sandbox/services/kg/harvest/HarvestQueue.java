@@ -63,7 +63,13 @@ public class HarvestQueue {
 	@Value("${kg.harvest.retry-max-seconds:43200}")
 	private long retryMaxSeconds;
 
-	/** @return true if a new task was created, false if the URL was already known. */
+	/**
+	 * @return true if a new task was created, false if the document was
+	 *         already known. If it is known but not yet imported (pending,
+	 *         retrying or dead) and was found under a different link, the task
+	 *         takes the fresh link, since sites such as the Bombay High Court
+	 *         put expiring tokens in their document URLs.
+	 */
 	public boolean enqueue(String sourceId, DiscoveredDocument doc, LocalDate windowStart) {
 		String normalised = UrlKeys.normalise(doc.getUrl());
 		if (caseRepository.existsBySourceUrl(doc.getUrl()) || caseRepository.existsBySourceUrl(normalised)) {
@@ -77,11 +83,24 @@ public class HarvestQueue {
 				.setOnInsert("nextAttemptAt", now).setOnInsert("createdAt", now).setOnInsert("updatedAt", now);
 		try {
 			UpdateResult r = mongo.upsert(q, u, HarvestTask.class);
-			return r.getUpsertedId() != null;
+			if (r.getUpsertedId() != null) {
+				return true;
+			}
+			refreshLink(q, doc.getUrl(), now);
+			return false;
 		} catch (org.springframework.dao.DuplicateKeyException race) {
 			// Another instance inserted the same key concurrently.
 			return false;
 		}
+	}
+
+	private void refreshLink(Query byKey, String freshUrl, Instant now) {
+		Query stale = Query.query(Criteria.where("dedupKey").is(byKey.getQueryObject().get("dedupKey"))
+				.and("url").ne(freshUrl)
+				.and("status").in(HarvestTask.Status.PENDING, HarvestTask.Status.RETRY, HarvestTask.Status.DEAD));
+		Update u = new Update().set("url", freshUrl).set("status", HarvestTask.Status.PENDING).set("attempts", 0)
+				.set("nextAttemptAt", now).set("updatedAt", now);
+		mongo.updateFirst(stale, u, HarvestTask.class);
 	}
 
 	/**
