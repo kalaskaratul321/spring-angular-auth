@@ -26,7 +26,7 @@ import org.junit.Test;
 public class OfficialSourceFetcherTest {
 
 	private final OfficialSourceFetcher production = new OfficialSourceFetcher(Arrays.asList("gov.in", "nic.in"),
-			false, 1024, 1000, 1000);
+			false, 1024, 1000, 1000, 0);
 
 	private HttpServer server;
 	private String base;

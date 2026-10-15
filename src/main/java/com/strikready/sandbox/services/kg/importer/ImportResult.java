@@ -11,7 +11,9 @@ import com.strikready.sandbox.models.kg.LegalCase;
 public class ImportResult {
 
 	public enum Status {
-		CREATED, UPDATED, UNCHANGED, FAILED
+		CREATED, UPDATED, UNCHANGED,
+		/** Same file (by SHA-256) already imported from another URL; nothing saved. */
+		DUPLICATE, FAILED
 	}
 
 	private String url;
@@ -21,13 +23,20 @@ public class ImportResult {
 	private List<String> extractedFields = new ArrayList<>();
 	private List<String> warnings = new ArrayList<>();
 	private String error;
+	/** For FAILED: whether retrying later might succeed (network/5xx vs 404/not allowed). */
+	private boolean retryable;
 
-	public static ImportResult failed(String url, String error) {
+	public static ImportResult failed(String url, String error, boolean retryable) {
 		ImportResult r = new ImportResult();
 		r.url = url;
 		r.status = Status.FAILED;
 		r.error = error;
+		r.retryable = retryable;
 		return r;
+	}
+
+	public boolean isRetryable() {
+		return retryable;
 	}
 
 	public String getUrl() {

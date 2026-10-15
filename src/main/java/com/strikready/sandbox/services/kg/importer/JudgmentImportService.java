@@ -60,9 +60,15 @@ public class JudgmentImportService {
 			fetcher.validate(url);
 			LegalCase existing = caseRepository.findBySourceUrl(url);
 			return doImport(url, request.getMetadata(), existing, false);
-		} catch (IllegalArgumentException | IOException e) {
+		} catch (IllegalArgumentException e) {
+			log.warn("Import rejected for {}: {}", url, e.getMessage());
+			return ImportResult.failed(url, e.getMessage(), false);
+		} catch (HttpStatusException e) {
 			log.warn("Import failed for {}: {}", url, e.getMessage());
-			return ImportResult.failed(url, e.getMessage());
+			return ImportResult.failed(url, e.getMessage(), e.isRetryable());
+		} catch (IOException e) {
+			log.warn("Import failed for {}: {}", url, e.getMessage());
+			return ImportResult.failed(url, e.getMessage(), true);
 		}
 	}
 
@@ -89,8 +95,12 @@ public class JudgmentImportService {
 		String url = existing.getSource().getUrl();
 		try {
 			return doImport(url, editorialFields(existing), existing, true);
-		} catch (IllegalArgumentException | IOException e) {
-			return ImportResult.failed(url, e.getMessage());
+		} catch (IllegalArgumentException e) {
+			return ImportResult.failed(url, e.getMessage(), false);
+		} catch (HttpStatusException e) {
+			return ImportResult.failed(url, e.getMessage(), e.isRetryable());
+		} catch (IOException e) {
+			return ImportResult.failed(url, e.getMessage(), true);
 		}
 	}
 
@@ -115,6 +125,16 @@ public class JudgmentImportService {
 			result.setStatus(ImportResult.Status.UNCHANGED);
 			result.setLegalCase(saved);
 			return result;
+		}
+
+		if (existing == null) {
+			LegalCase sameFile = caseRepository.findFirstBySourceSha256(doc.getSha256());
+			if (sameFile != null) {
+				result.setStatus(ImportResult.Status.DUPLICATE);
+				result.setLegalCase(sameFile);
+				result.getWarnings().add("Same document already imported from " + sameFile.getSource().getUrl());
+				return result;
+			}
 		}
 
 		DocumentTextExtractor.ExtractedText extracted = extractor.extract(doc);

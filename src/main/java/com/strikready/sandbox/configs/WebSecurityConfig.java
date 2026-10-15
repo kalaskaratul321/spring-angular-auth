@@ -42,6 +42,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers(HttpMethod.POST, "/api/kg/cases/**").hasAuthority("Admin")
 				.antMatchers(HttpMethod.POST, "/api/kg/import/**", "/api/kg/import").hasAuthority("Admin")
 				.antMatchers(HttpMethod.DELETE, "/api/kg/cases/**").hasAuthority("Admin")
+				.antMatchers("/api/kg/harvest/**").hasAuthority("Admin")
 				.anyRequest().authenticated().and().csrf()
 				.disable().exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint()).and()
 				.apply(new JwtConfigurer(jwtTokenProvider));

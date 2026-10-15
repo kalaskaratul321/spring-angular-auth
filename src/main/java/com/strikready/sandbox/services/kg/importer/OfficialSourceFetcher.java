@@ -13,8 +13,10 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,19 +40,29 @@ public class OfficialSourceFetcher {
 	private final int connectTimeoutMs;
 	private final int readTimeoutMs;
 	private final boolean blockPrivateAddresses;
+	private final long perHostDelayMs;
+	/** Earliest time the next request to each host may start. */
+	private final Map<String, Long> nextSlotByHost = new HashMap<>();
 
 	@Autowired
 	public OfficialSourceFetcher(@Value("${kg.import.allowed-hosts:gov.in,nic.in}") List<String> allowedHosts,
 			@Value("${kg.import.allow-http:false}") boolean allowHttp,
 			@Value("${kg.import.max-bytes:26214400}") long maxBytes,
 			@Value("${kg.import.connect-timeout-ms:15000}") int connectTimeoutMs,
-			@Value("${kg.import.read-timeout-ms:60000}") int readTimeoutMs) {
-		this(allowedHosts, allowHttp, maxBytes, connectTimeoutMs, readTimeoutMs, true);
+			@Value("${kg.import.read-timeout-ms:60000}") int readTimeoutMs,
+			@Value("${kg.import.per-host-delay-ms:1000}") long perHostDelayMs) {
+		this(allowedHosts, allowHttp, maxBytes, connectTimeoutMs, readTimeoutMs, true, perHostDelayMs);
 	}
 
 	/** Visible for tests, which serve documents from a loopback server. */
 	OfficialSourceFetcher(List<String> allowedHosts, boolean allowHttp, long maxBytes, int connectTimeoutMs,
 			int readTimeoutMs, boolean blockPrivateAddresses) {
+		this(allowedHosts, allowHttp, maxBytes, connectTimeoutMs, readTimeoutMs, blockPrivateAddresses, 0);
+	}
+
+	OfficialSourceFetcher(List<String> allowedHosts, boolean allowHttp, long maxBytes, int connectTimeoutMs,
+			int readTimeoutMs, boolean blockPrivateAddresses, long perHostDelayMs) {
+		this.perHostDelayMs = perHostDelayMs;
 		List<String> hosts = new ArrayList<>();
 		for (String h : allowedHosts) {
 			String t = h.trim().toLowerCase(Locale.ROOT);
@@ -73,6 +85,7 @@ public class OfficialSourceFetcher {
 	public FetchedDocument fetch(String url) throws IOException {
 		URL current = validate(url);
 		for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
+			throttle(current.getHost().toLowerCase(Locale.ROOT));
 			HttpURLConnection conn = (HttpURLConnection) current.openConnection();
 			conn.setInstanceFollowRedirects(false);
 			conn.setConnectTimeout(connectTimeoutMs);
@@ -90,7 +103,7 @@ public class OfficialSourceFetcher {
 					continue;
 				}
 				if (status != HttpURLConnection.HTTP_OK) {
-					throw new IOException("HTTP " + status + " from " + current);
+					throw new HttpStatusException(status, current.toString());
 				}
 				long declared = conn.getContentLengthLong();
 				if (declared > maxBytes) {
@@ -146,6 +159,32 @@ public class OfficialSourceFetcher {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Spaces requests to the same host at least {@code perHostDelayMs} apart
+	 * (within this instance), so bulk harvesting does not overload court servers.
+	 */
+	private void throttle(String host) throws IOException {
+		if (perHostDelayMs <= 0) {
+			return;
+		}
+		long wait;
+		synchronized (nextSlotByHost) {
+			long now = System.currentTimeMillis();
+			Long slot = nextSlotByHost.get(host);
+			long start = slot == null || slot < now ? now : slot;
+			nextSlotByHost.put(host, start + perHostDelayMs);
+			wait = start - now;
+		}
+		if (wait > 0) {
+			try {
+				Thread.sleep(wait);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				throw new IOException("Interrupted while waiting to fetch from " + host);
+			}
+		}
 	}
 
 	private static void checkPublicAddress(String host) {

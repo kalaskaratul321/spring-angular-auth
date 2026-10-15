@@ -15,6 +15,10 @@ public interface LegalCaseRepository extends MongoRepository<LegalCase, String> 
 
 	LegalCase findBySourceUrl(String url);
 
+	boolean existsBySourceUrl(String url);
+
+	LegalCase findFirstBySourceSha256(String sha256);
+
 	Page<LegalCase> findByCategory(CaseCategory category, Pageable pageable);
 
 	Page<LegalCase> findByCategoryAndCourtLevel(CaseCategory category, CourtLevel courtLevel, Pageable pageable);

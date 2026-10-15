@@ -19,7 +19,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @CompoundIndexes({
 		@CompoundIndex(name = "category_level_idx", def = "{'category': 1, 'courtLevel': 1, 'decisionDate': -1}"),
 		@CompoundIndex(name = "category_verdict_idx", def = "{'category': 1, 'verdict.result': 1}"),
-		@CompoundIndex(name = "source_url_idx", def = "{'source.url': 1}", unique = true, sparse = true) })
+		@CompoundIndex(name = "source_url_idx", def = "{'source.url': 1}", unique = true, sparse = true),
+		@CompoundIndex(name = "source_sha_idx", def = "{'source.sha256': 1}", sparse = true) })
 public class LegalCase {
 
 	@Id
