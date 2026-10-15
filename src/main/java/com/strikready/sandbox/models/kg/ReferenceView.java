@@ -11,6 +11,8 @@ public class ReferenceView {
 	private String citation;
 	private String title;
 	private String paragraph;
+	/** Official URL of the referred judgment, from the reference or the imported case. */
+	private String sourceUrl;
 	/** Set when the judgment is in the graph. */
 	private String caseId;
 	private String courtCode;
@@ -31,6 +33,7 @@ public class ReferenceView {
 		v.title = ref.getTitle();
 		v.paragraph = ref.getParagraph();
 		v.courtCode = ref.getCourt();
+		v.sourceUrl = ref.getSourceUrl();
 		if (resolved != null) {
 			v.fill(resolved);
 		}
@@ -46,6 +49,9 @@ public class ReferenceView {
 		courtCode = c.getCourtCode();
 		courtLevel = c.getCourtLevel();
 		verdict = c.getVerdict() == null ? null : c.getVerdict().getResult();
+		if (c.getSource() != null) {
+			sourceUrl = c.getSource().getUrl();
+		}
 	}
 
 	public RelationType getTreatment() {
@@ -62,6 +68,10 @@ public class ReferenceView {
 
 	public String getParagraph() {
 		return paragraph;
+	}
+
+	public String getSourceUrl() {
+		return sourceUrl;
 	}
 
 	public String getCaseId() {

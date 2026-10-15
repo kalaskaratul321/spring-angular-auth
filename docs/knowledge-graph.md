@@ -21,6 +21,66 @@ case carrying that citation is ingested later, the existing links are moved
 onto it automatically. Citations are compared in normalised form, so
 `(2019) 4 SCC 197` and `2019 (4) SCC 197` match.
 
+## Importing from official websites
+
+Judgments and reference files are read directly from official government
+websites; **no copy of the file is kept**. Each import:
+
+1. Checks the URL is `https` on an allowed host (default: any `*.gov.in` or
+   `*.nic.in`, e.g. `bombayhighcourt.nic.in`, `judgments.ecourts.gov.in`,
+   `maharera.maharashtra.gov.in`, `indiacode.nic.in`). Redirects are re-checked
+   at every hop, hosts resolving to private addresses are refused, and the body
+   is capped (25 MB by default). Configure in `application.properties`
+   (`kg.import.*`).
+2. Downloads the PDF/HTML **into memory only**, extracts the text (PDFBox /
+   jsoup) and parses it: case number and type, CNR, parties (-> title), coram,
+   decision date, statutes (`Section 138 of the N.I. Act`, `ss. 302, 307 r/w 34
+   IPC`, `Code of Criminal Procedure, 1973`...), issues (`Whether ...?`),
+   verdict (from the operative order), the judgment's own neutral citation
+   (`2025:BHC-AS:12345`) and the judgments it cites (SCC, SCC OnLine, AIR, SCR,
+   INSC, Mh.L.J., Bom.C.R., BHC neutral citations), with treatment guessed
+   from the sentence (followed / distinguished / overruled / cited). The court
+   is inferred for Bombay HC benches, MahaRERA, the RERA Appellate Tribunal,
+   MRT, MAT and the Mumbai City Civil & Sessions Court.
+3. Saves only the structured case plus `source`:
+   `{url, resolvedUrl, host, contentType, contentLength, sha256, fetchedAt,
+   lastModified, documentTitle, pageCount}`. The document bytes and text are
+   discarded. Graph nodes and reference lists expose `sourceUrl` so the UI can
+   link to the official copy.
+
+Anything you pass in `metadata` overrides what was extracted (useful for
+issue `topic`s, `courtCode` of district courts, `appealFromCaseId`). The
+response lists `extractedFields` and `warnings` (e.g. court or verdict not
+recognised, scanned PDF without text layer - OCR is not done).
+
+Re-importing the same URL updates the same case. `POST /cases/{id}/refresh`
+re-fetches the source: if the SHA-256 is unchanged only `fetchedAt` changes;
+if the official copy changed, extracted fields are re-parsed while title,
+court, category, summary, topical issues and the appeal link are kept.
+
+Reference files work the same way: import the cited judgment's official URL
+and any `CITATION` links pointing to its citation move onto it. References
+and statutes also carry an optional `sourceUrl` (e.g. India Code).
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/import/allowed-hosts` | Hosts imports may read from |
+| POST | `/import` | `{url, metadata?}` -> import one document (Admin) |
+| POST | `/import/bulk` | List of the above (Admin) |
+| POST | `/cases/{id}/refresh` | Re-read the official source (Admin) |
+| GET | `/cases/{id}/source` | Source URL and fetch metadata |
+
+```bash
+curl -XPOST localhost:8080/api/kg/import -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' -d '{
+    "url": "https://<official-host>.gov.in/path/to/judgment.pdf",
+    "metadata": { "issues": [ { "topic": "Cheque dishonour - sentencing" } ] }
+  }'
+```
+
+eCourts and some court portals put judgments behind a captcha or a session;
+use the direct PDF link of the judgment (the URL the browser downloads from).
+
 ## Model
 
 **Categories** (`CaseCategory`): `CIVIL`, `CRIMINAL`, `LAND`, `RERA`, `FAMILY`,

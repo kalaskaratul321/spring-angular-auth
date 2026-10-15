@@ -19,6 +19,9 @@ import com.strikready.sandbox.models.kg.StatuteReference;
 import com.strikready.sandbox.models.kg.VerdictResult;
 import com.strikready.sandbox.repositories.kg.LegalCaseRepository;
 import com.strikready.sandbox.services.kg.KnowledgeGraphService;
+import com.strikready.sandbox.services.kg.importer.ImportRequest;
+import com.strikready.sandbox.services.kg.importer.ImportResult;
+import com.strikready.sandbox.services.kg.importer.JudgmentImportService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -50,6 +53,9 @@ public class KnowledgeGraphController {
 
 	@Autowired
 	private LegalCaseRepository caseRepository;
+
+	@Autowired
+	private JudgmentImportService importService;
 
 	// ----------------------------------------------------------- categories
 
@@ -111,6 +117,38 @@ public class KnowledgeGraphController {
 	@PostMapping("/cases/bulk")
 	public ResponseEntity<List<LegalCase>> ingestAll(@RequestBody List<LegalCase> cases) {
 		return new ResponseEntity<>(graphService.ingestAll(cases), HttpStatus.CREATED);
+	}
+
+	// --------------------------------------------- import from official sources
+
+	@GetMapping("/import/allowed-hosts")
+	public List<String> allowedHosts() {
+		return importService.allowedHosts();
+	}
+
+	@PostMapping("/import")
+	public ResponseEntity<ImportResult> importFromUrl(@RequestBody ImportRequest request) {
+		ImportResult result = importService.importFromUrl(request);
+		HttpStatus status = result.getStatus() == ImportResult.Status.FAILED ? HttpStatus.UNPROCESSABLE_ENTITY
+				: result.getStatus() == ImportResult.Status.CREATED ? HttpStatus.CREATED : HttpStatus.OK;
+		return new ResponseEntity<>(result, status);
+	}
+
+	@PostMapping("/import/bulk")
+	public List<ImportResult> importAll(@RequestBody List<ImportRequest> requests) {
+		return importService.importAll(requests);
+	}
+
+	@PostMapping("/cases/{id}/refresh")
+	public ImportResult refresh(@PathVariable String id) {
+		return importService.refresh(id);
+	}
+
+	@GetMapping("/cases/{id}/source")
+	public ResponseEntity<?> source(@PathVariable String id) {
+		return caseRepository.findById(id).<ResponseEntity<?>>map(c -> c.getSource() == null
+				? ResponseEntity.notFound().build()
+				: ResponseEntity.ok(c.getSource())).orElse(ResponseEntity.notFound().build());
 	}
 
 	@PostMapping("/classify")

@@ -88,6 +88,12 @@ public class KnowledgeGraphService {
 				legalCase.setId(existing.getId());
 			}
 		}
+		if (legalCase.getSource() != null && legalCase.getSource().getUrl() != null && legalCase.getId() == null) {
+			LegalCase existing = caseRepository.findBySourceUrl(legalCase.getSource().getUrl());
+			if (existing != null) {
+				legalCase.setId(existing.getId());
+			}
+		}
 
 		Court court = legalCase.getCourtCode() == null ? null : courtRepository.findByCode(legalCase.getCourtCode());
 		if (legalCase.getCourtCode() != null && court == null) {
@@ -104,7 +110,7 @@ public class KnowledgeGraphService {
 			if (legalCase.getSubCategory() == null) {
 				legalCase.setSubCategory(c.getSubCategory());
 			}
-		} else {
+		} else if (legalCase.getCategoryConfidence() == 0) {
 			legalCase.setCategoryConfidence(1.0);
 		}
 
@@ -612,6 +618,9 @@ public class KnowledgeGraphService {
 						node.getProperties().put("verdictSummary", c.getVerdict().getSummary());
 					}
 					node.getProperties().put("citations", c.getCitations());
+					if (c.getSource() != null) {
+						node.getProperties().put("sourceUrl", c.getSource().getUrl());
+					}
 				}
 			} else if (type == NodeType.COURT) {
 				Court c = courts.get(id);

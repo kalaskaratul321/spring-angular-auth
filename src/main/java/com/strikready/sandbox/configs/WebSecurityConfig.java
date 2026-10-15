@@ -40,6 +40,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
 				.antMatchers("/api/auth/login").permitAll().antMatchers("/api/auth/register").permitAll()
 				.antMatchers("/api/products/**").hasAuthority("ADMIN")
 				.antMatchers(HttpMethod.POST, "/api/kg/cases/**").hasAuthority("Admin")
+				.antMatchers(HttpMethod.POST, "/api/kg/import/**", "/api/kg/import").hasAuthority("Admin")
 				.antMatchers(HttpMethod.DELETE, "/api/kg/cases/**").hasAuthority("Admin")
 				.anyRequest().authenticated().and().csrf()
 				.disable().exceptionHandling().authenticationEntryPoint(unauthorizedEntryPoint()).and()

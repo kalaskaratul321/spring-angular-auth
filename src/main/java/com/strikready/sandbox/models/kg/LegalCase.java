@@ -18,7 +18,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "kg_cases")
 @CompoundIndexes({
 		@CompoundIndex(name = "category_level_idx", def = "{'category': 1, 'courtLevel': 1, 'decisionDate': -1}"),
-		@CompoundIndex(name = "category_verdict_idx", def = "{'category': 1, 'verdict.result': 1}") })
+		@CompoundIndex(name = "category_verdict_idx", def = "{'category': 1, 'verdict.result': 1}"),
+		@CompoundIndex(name = "source_url_idx", def = "{'source.url': 1}", unique = true, sparse = true) })
 public class LegalCase {
 
 	@Id
@@ -63,6 +64,9 @@ public class LegalCase {
 
 	private String summary;
 	private List<String> keywords = new ArrayList<>();
+
+	/** Official document this case was imported from; the file itself is not stored. */
+	private SourceDocument source;
 
 	public String getId() {
 		return id;
@@ -254,6 +258,14 @@ public class LegalCase {
 
 	public void setSummary(String summary) {
 		this.summary = summary;
+	}
+
+	public SourceDocument getSource() {
+		return source;
+	}
+
+	public void setSource(SourceDocument source) {
+		this.source = source;
 	}
 
 	public List<String> getKeywords() {

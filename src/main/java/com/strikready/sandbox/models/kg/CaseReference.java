@@ -18,6 +18,8 @@ public class CaseReference {
 	private RelationType treatment = RelationType.CITES;
 	/** Paragraph(s) of the judgment where it is referred to. */
 	private String paragraph;
+	/** Official URL of the referred judgment; import it to add it to the graph. */
+	private String sourceUrl;
 
 	public CaseReference() {
 	}
@@ -66,6 +68,14 @@ public class CaseReference {
 
 	public void setTreatment(RelationType treatment) {
 		this.treatment = treatment;
+	}
+
+	public String getSourceUrl() {
+		return sourceUrl;
+	}
+
+	public void setSourceUrl(String sourceUrl) {
+		this.sourceUrl = sourceUrl;
 	}
 
 	public String getParagraph() {

@@ -13,6 +13,8 @@ public interface LegalCaseRepository extends MongoRepository<LegalCase, String> 
 
 	LegalCase findByCnr(String cnr);
 
+	LegalCase findBySourceUrl(String url);
+
 	Page<LegalCase> findByCategory(CaseCategory category, Pageable pageable);
 
 	Page<LegalCase> findByCategoryAndCourtLevel(CaseCategory category, CourtLevel courtLevel, Pageable pageable);
