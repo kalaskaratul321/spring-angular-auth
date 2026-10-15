@@ -1,0 +1,242 @@
+<main class="explorer">
+  <section class="toolbar" aria-label="Graph controls">
+    <label>
+      Category
+      <select [ngModel]="selectedCategory()" (ngModelChange)="selectedCategory.set($event); courtLevel.set(null)">
+        @for (s of summaries(); track s.category) {
+          <option [ngValue]="s.category">{{ s.displayName }} ({{ s.totalCases }})</option>
+        }
+      </select>
+    </label>
+    <label>
+      Court level
+      <select [ngModel]="courtLevel()" (ngModelChange)="courtLevel.set($event)">
+        <option [ngValue]="null">All courts</option>
+        @for (o of levelsInCategory(); track o.value) {
+          <option [ngValue]="o.value">{{ o.label }}</option>
+        }
+      </select>
+    </label>
+    <label>
+      Cases
+      <select [ngModel]="limit()" (ngModelChange)="limit.set($event)">
+        @for (n of [25, 50, 100, 200]; track n) {
+          <option [ngValue]="n">{{ n }}</option>
+        }
+      </select>
+    </label>
+    <button type="button" class="primary" (click)="loadCategory()" [disabled]="!selectedCategory() || loading()">
+      Show graph
+    </button>
+
+    <form class="search" role="search" (ngSubmit)="search()">
+      <input type="search" name="q" placeholder="Search title, case no., citation, issue…"
+             [ngModel]="query()" (ngModelChange)="query.set($event)" aria-label="Search cases" />
+      <button type="submit" class="ghost">Search</button>
+    </form>
+  </section>
+
+  @if (searchResults(); as results) {
+    <section class="results card" aria-label="Search results">
+      <div class="results-head">
+        <strong>{{ results.length }} result{{ results.length === 1 ? '' : 's' }}</strong>
+        <button type="button" class="ghost small" (click)="searchResults.set(null)">Close</button>
+      </div>
+      <ul>
+        @for (c of results; track c.id) {
+          <li>
+            <button type="button" class="link" (click)="openCase(c.id)">
+              <span class="dot" [style.background]="categoryColors[c.category ?? 'OTHER']"></span>
+              {{ c.title || c.caseNumber }}
+            </button>
+            <span class="muted small">{{ c.caseNumber }} · {{ levelLabel(c.courtLevel) }} · {{ c.decisionDate }}
+              · {{ verdictLabel(c.verdict?.result) }}</span>
+          </li>
+        } @empty {
+          <li class="muted">No matching cases.</li>
+        }
+      </ul>
+    </section>
+  }
+
+  <div class="workspace">
+    <section class="graph card">
+      <div class="graph-bar">
+        <span class="muted small">{{ stats().cases }} cases · {{ stats().nodes }} nodes · {{ stats().edges }} links</span>
+        @if (loading()) {
+          <span class="small">Loading…</span>
+        }
+        <span class="spacer"></span>
+        <button type="button" class="ghost small" (click)="fit()">Fit</button>
+        <button type="button" class="ghost small" (click)="relayout()">Re-layout</button>
+      </div>
+      @if (message()) {
+        <p class="message" role="status">{{ message() }}</p>
+      }
+      <app-graph-canvas
+        class="canvas"
+        [graph]="graph()"
+        [hiddenTypes]="hidden()"
+        [highlighted]="highlighted()"
+        (nodeSelected)="select($event)"
+        (nodeExpand)="expand($event)"
+      />
+      <p class="hint muted small">Click a node for details · double-click to expand · scroll to zoom · drag to pan</p>
+    </section>
+
+    <aside class="side">
+      <section class="card legend" aria-label="Legend">
+        <h2>Show</h2>
+        <ul class="types">
+          @for (t of nodeTypes; track t.type) {
+            <li>
+              <label>
+                <input type="checkbox" [checked]="!hidden().has(t.type)" (change)="toggleType(t.type)" />
+                <span [class]="'shape ' + t.shape" [style.background]="t.color"></span>
+                {{ t.label }}
+              </label>
+            </li>
+          }
+        </ul>
+        <h2>Links</h2>
+        <ul class="edges">
+          @for (e of edgeLegend; track e.label) {
+            <li>
+              <span class="line" [class.dashed]="e.dashed" [style.border-color]="e.color" [style.border-top-width.px]="e.width"></span>
+              {{ e.label }}
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (selected(); as node) {
+        <section class="card detail" aria-label="Selected node">
+          <div class="detail-head">
+            <span class="badge">{{ typeStyles[node.type].label }}</span>
+            <button type="button" class="ghost small" (click)="clearSelection()" aria-label="Close details">✕</button>
+          </div>
+          <h2>{{ node.label }}</h2>
+
+          @if (node.type !== 'CASE') {
+            <p class="muted small">{{ node.id }}</p>
+            <button type="button" class="ghost" (click)="expand(node.id)">Expand connections</button>
+          } @else if (detailLoading()) {
+            <p class="muted">Loading case…</p>
+          } @else if (detail(); as d) {
+            <dl class="facts">
+              <dt>Case no.</dt><dd>{{ d.legalCase.caseNumber || '—' }}</dd>
+              <dt>Court</dt><dd>{{ d.legalCase.courtCode }} · {{ levelLabel(d.legalCase.courtLevel) }}</dd>
+              <dt>Category</dt>
+              <dd>
+                <span class="dot" [style.background]="categoryColors[d.legalCase.category ?? 'OTHER']"></span>
+                {{ categoryName(d.legalCase.category) }}{{ d.legalCase.subCategory ? ' · ' + d.legalCase.subCategory : '' }}
+                @if (d.legalCase.categoryConfidence !== undefined && d.legalCase.categoryConfidence < 1) {
+                  <span class="muted small">(auto, {{ (d.legalCase.categoryConfidence * 100).toFixed(0) }}%)</span>
+                }
+              </dd>
+              <dt>Decided</dt><dd>{{ d.legalCase.decisionDate || '—' }}</dd>
+              @if (d.legalCase.judges?.length) {
+                <dt>Coram</dt><dd>{{ d.legalCase.judges!.join(', ') }}</dd>
+              }
+              @if (d.legalCase.cnr) {
+                <dt>CNR</dt><dd>{{ d.legalCase.cnr }}</dd>
+              }
+            </dl>
+
+            <h3>Verdict</h3>
+            @if (d.legalCase.verdict; as v) {
+              <p><span class="verdict">{{ verdictLabel(v.result) }}</span></p>
+              @if (v.summary) { <p class="small">{{ v.summary }}</p> }
+              @if (v.reliefGranted) { <p class="small"><b>Relief:</b> {{ v.reliefGranted }}</p> }
+              @if (v.sentence) { <p class="small"><b>Sentence:</b> {{ v.sentence }}</p> }
+            } @else {
+              <p class="muted small">Not recorded.</p>
+            }
+
+            @if (d.legalCase.issues?.length) {
+              <h3>Issues</h3>
+              <ol class="issues">
+                @for (i of d.legalCase.issues; track $index) {
+                  <li>
+                    @if (i.topic) { <b>{{ i.topic }}</b> }
+                    @if (i.question) { <div class="small">{{ i.question }}</div> }
+                    @if (i.finding) { <div class="small muted">Held: {{ i.finding }}</div> }
+                  </li>
+                }
+              </ol>
+            }
+
+            @if (d.legalCase.statutes?.length) {
+              <h3>Statutes</h3>
+              <div class="chips">
+                @for (s of d.legalCase.statutes; track $index) {
+                  @if (s.sourceUrl) {
+                    <a class="chip" [href]="s.sourceUrl" target="_blank" rel="noopener">{{ s.act }} {{ s.section }} ↗</a>
+                  } @else {
+                    <span class="chip">{{ s.act }} {{ s.section }}</span>
+                  }
+                }
+              </div>
+            }
+
+            @if (d.chain.length > 1) {
+              <h3>Appeal chain</h3>
+              <ol class="chain">
+                @for (c of d.chain; track c.id) {
+                  <li [class.current]="c.id === d.legalCase.id">
+                    <span>{{ levelLabel(c.courtLevel) }}</span>
+                    <span class="small">{{ c.caseNumber || c.title }}</span>
+                    <span class="small muted">{{ verdictLabel(c.verdict?.result) }}</span>
+                  </li>
+                }
+              </ol>
+              <button type="button" class="ghost" (click)="showChain(d.chain)">Show chain in graph</button>
+            }
+
+            @if (d.references.length) {
+              <h3>Refers to ({{ d.references.length }})</h3>
+              <ul class="refs">
+                @for (r of d.references; track $index) {
+                  <li>
+                    <span class="rel" [style.color]="relationStyles[r.treatment].color">
+                      {{ relationLabels[r.treatment] }}
+                    </span>
+                    @if (r.caseId) {
+                      <button type="button" class="link" (click)="goToReference(r)">{{ r.title || r.citation }}</button>
+                    } @else {
+                      <span>{{ r.title || r.citation }}</span>
+                    }
+                    @if (r.citation && r.title) { <span class="muted small">{{ r.citation }}</span> }
+                    @if (r.sourceUrl) { <a class="small" [href]="r.sourceUrl" target="_blank" rel="noopener">official copy ↗</a> }
+                  </li>
+                }
+              </ul>
+            }
+
+            @if (d.citedBy.length) {
+              <h3>Cited by ({{ d.citedBy.length }})</h3>
+              <ul class="refs">
+                @for (r of d.citedBy; track $index) {
+                  <li>
+                    <button type="button" class="link" (click)="goToReference(r)">{{ r.title || r.citation }}</button>
+                    <span class="muted small">{{ relationLabels[r.treatment] }} · {{ levelLabel(r.courtLevel) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+
+            <div class="actions">
+              <button type="button" class="ghost" (click)="expand(node.id)">Expand connections</button>
+              @if (d.legalCase.source?.url; as url) {
+                <a class="button primary" [href]="url" target="_blank" rel="noopener">Official judgment ↗</a>
+              }
+            </div>
+            @if (d.legalCase.source; as src) {
+              <p class="muted small">Source: {{ src.host }} · fetched {{ src.fetchedAt?.substring(0, 10) }}</p>
+            }
+          }
+        </section>
+      }
+    </aside>
+  </div>
+</main>

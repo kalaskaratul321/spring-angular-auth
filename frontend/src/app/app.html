@@ -1,0 +1,15 @@
+@if (auth.isLoggedIn()) {
+  <header class="topbar">
+    <a class="brand" routerLink="/overview">MahaLegal <span>Knowledge Graph</span></a>
+    <nav aria-label="Main">
+      <a routerLink="/overview" routerLinkActive="active">Overview</a>
+      <a routerLink="/explorer" routerLinkActive="active">Graph explorer</a>
+      <a routerLink="/courts" routerLinkActive="active">Courts</a>
+    </nav>
+    <div class="user">
+      <span class="muted">{{ auth.user()?.firstname || auth.user()?.username }}</span>
+      <button type="button" class="ghost" (click)="auth.logout()">Sign out</button>
+    </div>
+  </header>
+}
+<router-outlet />
