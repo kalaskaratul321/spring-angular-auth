@@ -1,0 +1,215 @@
+[
+  {
+    "id": "demo-jmfc-ni138",
+    "caseNumber": "SCC/1450/2021",
+    "caseType": "Summary Criminal Case",
+    "title": "Illustrative: A. Traders v. B. Kulkarni (cheque dishonour)",
+    "courtCode": "JMFC-PUNE",
+    "decisionDate": "2023-03-10",
+    "status": "DISPOSED",
+    "judges": [
+      "S. R. Deshmukh"
+    ],
+    "petitioners": [
+      "A. Traders"
+    ],
+    "respondents": [
+      "B. Kulkarni"
+    ],
+    "statutes": [
+      {
+        "act": "Negotiable Instruments Act, 1881",
+        "section": "138"
+      }
+    ],
+    "issues": [
+      {
+        "topic": "Cheque dishonour - legally enforceable debt",
+        "question": "Whether the cheque was issued towards a legally enforceable debt",
+        "finding": "Yes; presumption under s.139 not rebutted"
+      }
+    ],
+    "verdict": {
+      "result": "CONVICTED",
+      "summary": "Accused convicted under s.138 NI Act",
+      "sentence": "Simple imprisonment 6 months and compensation of Rs. 2,00,000"
+    },
+    "references": [
+      {
+        "citation": "(2019) 4 SCC 197",
+        "title": "Bir Singh v. Mukesh Kumar",
+        "court": "Supreme Court",
+        "treatment": "FOLLOWS",
+        "paragraph": "14"
+      }
+    ],
+    "summary": "Complaint for dishonour of cheque issued towards supply of goods."
+  },
+  {
+    "id": "demo-sessions-ni138-appeal",
+    "caseNumber": "Criminal Appeal 210/2023",
+    "caseType": "Criminal Appeal",
+    "title": "Illustrative: B. Kulkarni v. A. Traders (appeal against conviction)",
+    "courtCode": "DSC-PUNE",
+    "decisionDate": "2024-01-22",
+    "status": "DISPOSED",
+    "judges": [
+      "P. V. Joshi"
+    ],
+    "petitioners": [
+      "B. Kulkarni"
+    ],
+    "respondents": [
+      "A. Traders"
+    ],
+    "statutes": [
+      {
+        "act": "NI Act",
+        "section": "138"
+      },
+      {
+        "act": "CrPC",
+        "section": "374"
+      }
+    ],
+    "issues": [
+      {
+        "topic": "Cheque dishonour - legally enforceable debt",
+        "question": "Whether the trial court rightly drew the presumption under s.139",
+        "finding": "Yes"
+      }
+    ],
+    "verdict": {
+      "result": "DISMISSED",
+      "summary": "Appeal dismissed; conviction confirmed"
+    },
+    "references": [
+      {
+        "caseId": "demo-jmfc-ni138",
+        "treatment": "CITES"
+      },
+      {
+        "citation": "(2019) 4 SCC 197",
+        "title": "Bir Singh v. Mukesh Kumar",
+        "court": "Supreme Court",
+        "treatment": "FOLLOWS"
+      }
+    ],
+    "appealFromCaseId": "demo-jmfc-ni138"
+  },
+  {
+    "id": "demo-hc-ni138-revision",
+    "caseNumber": "Criminal Revision Application 88/2024",
+    "caseType": "Criminal Revision Application",
+    "title": "Illustrative: B. Kulkarni v. A. Traders (revision)",
+    "citations": [
+      "2025 SCC OnLine Bom 9999 (illustrative)"
+    ],
+    "courtCode": "BHC-MUM",
+    "decisionDate": "2025-06-05",
+    "status": "DISPOSED",
+    "judges": [
+      "Hon'ble Mr. Justice R. K. Patil"
+    ],
+    "petitioners": [
+      "B. Kulkarni"
+    ],
+    "respondents": [
+      "A. Traders"
+    ],
+    "statutes": [
+      {
+        "act": "NI Act",
+        "section": "138"
+      },
+      {
+        "act": "CrPC",
+        "section": "397"
+      }
+    ],
+    "issues": [
+      {
+        "topic": "Cheque dishonour - sentencing",
+        "question": "Whether a sentence of fine alone is adequate where compensation is paid",
+        "finding": "Yes, in the facts of the case"
+      }
+    ],
+    "verdict": {
+      "result": "PARTLY_ALLOWED",
+      "summary": "Conviction maintained; sentence of imprisonment set aside, fine enhanced",
+      "reliefGranted": "Imprisonment substituted with fine"
+    },
+    "references": [
+      {
+        "citation": "(2019) 4 SCC 197",
+        "title": "Bir Singh v. Mukesh Kumar",
+        "court": "Supreme Court",
+        "treatment": "CITES"
+      }
+    ],
+    "appealFromCaseId": "demo-sessions-ni138-appeal"
+  },
+  {
+    "id": "demo-maharera-possession",
+    "caseNumber": "CC006000000123456",
+    "caseType": "Complaint",
+    "title": "Illustrative: Allottee v. XYZ Developers (delayed possession)",
+    "courtCode": "MAHARERA",
+    "decisionDate": "2024-09-12",
+    "status": "DISPOSED",
+    "statutes": [
+      {
+        "act": "RERA",
+        "section": "18"
+      }
+    ],
+    "issues": [
+      {
+        "topic": "Delay in possession - interest",
+        "question": "Whether the allottee is entitled to interest under s.18 for delayed possession",
+        "finding": "Yes, from the agreed date of possession"
+      }
+    ],
+    "verdict": {
+      "result": "ALLOWED",
+      "summary": "Promoter directed to pay interest for every month of delay till possession",
+      "reliefGranted": "Interest for delayed possession"
+    },
+    "references": [
+      {
+        "citation": "(2021) SCC OnLine SC 1044",
+        "title": "Newtech Promoters and Developers v. State of UP",
+        "court": "Supreme Court",
+        "treatment": "FOLLOWS"
+      }
+    ],
+    "summary": "Promoter failed to hand over possession of flat by agreed date."
+  },
+  {
+    "id": "demo-tahsildar-mutation",
+    "caseNumber": "RTS/45/2022",
+    "caseType": "RTS Appeal",
+    "title": "Illustrative: Challenge to mutation entry, Survey No. 12, Haveli",
+    "courtCode": "SDO-HAVELI",
+    "decisionDate": "2023-11-02",
+    "status": "DISPOSED",
+    "statutes": [
+      {
+        "act": "Maharashtra Land Revenue Code, 1966",
+        "section": "247"
+      }
+    ],
+    "issues": [
+      {
+        "topic": "Mutation - notice to interested parties",
+        "question": "Whether the mutation was certified without notice to all interested parties",
+        "finding": "Yes; entry vitiated"
+      }
+    ],
+    "verdict": {
+      "result": "REMANDED",
+      "summary": "Mutation entry set aside and matter remanded to Tahsildar for fresh inquiry"
+    },
+    "summary": "Appeal against certification of mutation entry in 7/12 extract."
+  }
+]

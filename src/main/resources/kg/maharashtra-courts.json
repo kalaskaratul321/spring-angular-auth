@@ -1,0 +1,40 @@
+[
+  { "code": "BHC-MUM", "name": "Bombay High Court - Principal Seat, Mumbai", "level": "HIGH_COURT", "state": "Maharashtra", "district": "Mumbai", "bench": "Principal Seat" },
+  { "code": "BHC-NAG", "name": "Bombay High Court - Nagpur Bench", "level": "HIGH_COURT", "state": "Maharashtra", "district": "Nagpur", "bench": "Nagpur" },
+  { "code": "BHC-AUR", "name": "Bombay High Court - Aurangabad Bench", "level": "HIGH_COURT", "state": "Maharashtra", "district": "Chhatrapati Sambhajinagar", "bench": "Aurangabad" },
+  { "code": "BHC-KOP", "name": "Bombay High Court - Kolhapur Circuit Bench", "level": "HIGH_COURT", "state": "Maharashtra", "district": "Kolhapur", "bench": "Kolhapur" },
+
+  { "code": "CCSC-MUM", "name": "City Civil & Sessions Court, Greater Mumbai", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-THANE", "name": "District & Sessions Court, Thane", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Thane", "appellateCourtCode": "BHC-MUM", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-PUNE", "name": "District & Sessions Court, Pune", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "BHC-MUM", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-NASHIK", "name": "District & Sessions Court, Nashik", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Nashik", "appellateCourtCode": "BHC-MUM", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-NAGPUR", "name": "District & Sessions Court, Nagpur", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Nagpur", "appellateCourtCode": "BHC-NAG", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-CSN", "name": "District & Sessions Court, Chhatrapati Sambhajinagar", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Chhatrapati Sambhajinagar", "appellateCourtCode": "BHC-AUR", "categories": ["CIVIL", "CRIMINAL"] },
+  { "code": "DSC-KOLHAPUR", "name": "District & Sessions Court, Kolhapur", "level": "SESSIONS_COURT", "state": "Maharashtra", "district": "Kolhapur", "appellateCourtCode": "BHC-KOP", "categories": ["CIVIL", "CRIMINAL"] },
+
+  { "code": "CJSD-PUNE", "name": "Civil Judge (Senior Division), Pune", "level": "CIVIL_JUDGE_SENIOR_DIVISION", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "DSC-PUNE", "categories": ["CIVIL"] },
+  { "code": "CJJD-PUNE", "name": "Civil Judge (Junior Division), Pune", "level": "CIVIL_JUDGE_JUNIOR_DIVISION", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "DSC-PUNE", "categories": ["CIVIL"] },
+  { "code": "JMFC-PUNE", "name": "Judicial Magistrate First Class, Pune", "level": "JUDICIAL_MAGISTRATE", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "DSC-PUNE", "categories": ["CRIMINAL"] },
+  { "code": "CJSD-NAGPUR", "name": "Civil Judge (Senior Division), Nagpur", "level": "CIVIL_JUDGE_SENIOR_DIVISION", "state": "Maharashtra", "district": "Nagpur", "appellateCourtCode": "DSC-NAGPUR", "categories": ["CIVIL"] },
+  { "code": "JMFC-NAGPUR", "name": "Judicial Magistrate First Class, Nagpur", "level": "JUDICIAL_MAGISTRATE", "state": "Maharashtra", "district": "Nagpur", "appellateCourtCode": "DSC-NAGPUR", "categories": ["CRIMINAL"] },
+  { "code": "MM-MUM", "name": "Metropolitan Magistrate Court, Mumbai", "level": "JUDICIAL_MAGISTRATE", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "CCSC-MUM", "categories": ["CRIMINAL"] },
+  { "code": "SCC-MUM", "name": "Court of Small Causes, Mumbai", "level": "CIVIL_JUDGE_SENIOR_DIVISION", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["CIVIL"] },
+
+  { "code": "FC-MUM", "name": "Family Court, Bandra, Mumbai", "level": "FAMILY_COURT", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["FAMILY"] },
+  { "code": "FC-PUNE", "name": "Family Court, Pune", "level": "FAMILY_COURT", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "BHC-MUM", "categories": ["FAMILY"] },
+
+  { "code": "MREAT", "name": "Maharashtra Real Estate Appellate Tribunal", "level": "APPELLATE_TRIBUNAL", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["RERA"] },
+  { "code": "MAHARERA", "name": "Maharashtra Real Estate Regulatory Authority (MahaRERA)", "level": "TRIBUNAL", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "MREAT", "categories": ["RERA"] },
+
+  { "code": "MRT-PUNE", "name": "Maharashtra Revenue Tribunal, Pune", "level": "APPELLATE_TRIBUNAL", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "BHC-MUM", "categories": ["LAND"] },
+  { "code": "DIVCOM-PUNE", "name": "Divisional Commissioner, Pune", "level": "REVENUE_APPELLATE", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "BHC-MUM", "categories": ["LAND"] },
+  { "code": "COLL-PUNE", "name": "Collector, Pune", "level": "REVENUE_APPELLATE", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "DIVCOM-PUNE", "categories": ["LAND"] },
+  { "code": "SDO-HAVELI", "name": "Sub-Divisional Officer, Haveli (Pune)", "level": "REVENUE_AUTHORITY", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "COLL-PUNE", "categories": ["LAND"] },
+  { "code": "TAH-HAVELI", "name": "Tahsildar, Haveli (Pune)", "level": "REVENUE_AUTHORITY", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "SDO-HAVELI", "categories": ["LAND"] },
+
+  { "code": "SCDRC-MH", "name": "Maharashtra State Consumer Disputes Redressal Commission", "level": "STATE_COMMISSION", "state": "Maharashtra", "district": "Mumbai", "categories": ["CONSUMER"] },
+  { "code": "DCDRC-PUNE", "name": "District Consumer Disputes Redressal Commission, Pune", "level": "DISTRICT_COMMISSION", "state": "Maharashtra", "district": "Pune", "appellateCourtCode": "SCDRC-MH", "categories": ["CONSUMER"] },
+
+  { "code": "IC-MUM", "name": "Industrial Court, Mumbai", "level": "TRIBUNAL", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["LABOUR_SERVICE"] },
+  { "code": "MAT-MUM", "name": "Maharashtra Administrative Tribunal, Mumbai", "level": "TRIBUNAL", "state": "Maharashtra", "district": "Mumbai", "appellateCourtCode": "BHC-MUM", "categories": ["LABOUR_SERVICE"] }
+]

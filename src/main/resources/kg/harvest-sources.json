@@ -1,0 +1,24 @@
+[
+  {
+    "name": "bombay-high-court-judgments",
+    "seedVersion": 2,
+    "type": "SEARCH_FORM",
+    "enabled": false,
+    "formPageUrl": "https://bombayhighcourt.nic.in/ord_qry.php",
+    "formSelector": null,
+    "fromField": null,
+    "toField": null,
+    "extraFields": {},
+    "dateFormat": "dd-MM-yyyy",
+    "linkSelector": "a[href*=generatenewauth.php]",
+    "linkPattern": "generatenewauth\\.php\\?bhcpar=",
+    "tooManyResultsPattern": "(?i)too many (results|records)|refine your search",
+    "maxPages": 100,
+    "startDate": "2000-01-01",
+    "windowDays": 7,
+    "overlapDays": 10,
+    "maxWindowsPerRun": 20,
+    "defaultCourtCode": null,
+    "defaultCategory": null
+  }
+]
