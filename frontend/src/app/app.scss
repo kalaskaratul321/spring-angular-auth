@@ -1,0 +1,36 @@
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+  span { font-weight: 400; color: var(--muted); }
+}
+nav {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  a {
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--muted);
+    text-decoration: none;
+    &:hover { background: var(--hover); color: var(--text); }
+    &.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  }
+}
+.user { display: flex; gap: 10px; align-items: center; }
+@media (max-width: 640px) {
+  .topbar { gap: 8px; padding: 8px 16px; }
+  nav { order: 3; flex-basis: 100%; overflow-x: auto; }
+}

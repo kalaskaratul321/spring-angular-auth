@@ -468,9 +468,8 @@ public class KnowledgeGraphService {
 		AggregationResults<Document> levelResults = mongoTemplate.aggregate(byLevel, LegalCase.class, Document.class);
 		Map<CaseCategory, Map<CourtLevel, Long>> raw = new EnumMap<>(CaseCategory.class);
 		for (Document d : levelResults.getMappedResults()) {
-			Document id = (Document) d.get("_id");
-			CaseCategory cat = parseEnum(CaseCategory.class, id.getString("category"), CaseCategory.OTHER);
-			CourtLevel level = parseEnum(CourtLevel.class, id.getString("courtLevel"), null);
+			CaseCategory cat = parseEnum(CaseCategory.class, groupKey(d, "category"), CaseCategory.OTHER);
+			CourtLevel level = parseEnum(CourtLevel.class, groupKey(d, "courtLevel"), null);
 			long count = ((Number) d.get("count")).longValue();
 			CategorySummary s = byCategory.get(cat);
 			s.setTotalCases(s.getTotalCases() + count);
@@ -488,9 +487,8 @@ public class KnowledgeGraphService {
 				Aggregation.project("category").and("verdict.result").as("verdictResult"),
 				Aggregation.group("category", "verdictResult").count().as("count"));
 		for (Document d : mongoTemplate.aggregate(verdicts, LegalCase.class, Document.class).getMappedResults()) {
-			Document id = (Document) d.get("_id");
-			CaseCategory cat = parseEnum(CaseCategory.class, id.getString("category"), CaseCategory.OTHER);
-			VerdictResult result = parseEnum(VerdictResult.class, id.getString("verdictResult"), VerdictResult.OTHER);
+			CaseCategory cat = parseEnum(CaseCategory.class, groupKey(d, "category"), CaseCategory.OTHER);
+			VerdictResult result = parseEnum(VerdictResult.class, groupKey(d, "verdictResult"), VerdictResult.OTHER);
 			byCategory.get(cat).getCasesByVerdict().merge(result, ((Number) d.get("count")).longValue(), Long::sum);
 		}
 
@@ -500,14 +498,13 @@ public class KnowledgeGraphService {
 				Aggregation.group("category", "relation", "target").count().as("count"),
 				Aggregation.sort(Sort.Direction.DESC, "count"));
 		for (Document d : mongoTemplate.aggregate(topNodes, KgEdge.class, Document.class).getMappedResults()) {
-			Document id = (Document) d.get("_id");
-			CaseCategory cat = parseEnum(CaseCategory.class, id.getString("category"), CaseCategory.OTHER);
+			CaseCategory cat = parseEnum(CaseCategory.class, groupKey(d, "category"), CaseCategory.OTHER);
 			CategorySummary summary = byCategory.get(cat);
-			Map<String, Long> top = RelationType.INVOKES.name().equals(id.getString("relation"))
+			Map<String, Long> top = RelationType.INVOKES.name().equals(groupKey(d, "relation"))
 					? summary.getTopStatutes()
 					: summary.getTopIssues();
 			if (top.size() < 10) {
-				top.put(NodeType.identifierOf(id.getString("target")), ((Number) d.get("count")).longValue());
+				top.put(NodeType.identifierOf(groupKey(d, "target")), ((Number) d.get("count")).longValue());
 			}
 		}
 		return new ArrayList<>(byCategory.values());
@@ -650,6 +647,17 @@ public class KnowledgeGraphService {
 			view.getEdges().add(new GraphView.Edge(e.getSource(), e.getTarget(), e.getRelation()));
 		}
 		return view;
+	}
+
+	/**
+	 * Value of a $group key. Spring Data returns the keys of a multi-field
+	 * group as top-level fields of the result; the raw server shape nests them
+	 * under _id. Both are accepted.
+	 */
+	static String groupKey(Document result, String field) {
+		Object id = result.get("_id");
+		Object value = id instanceof Document ? ((Document) id).get(field) : result.get(field);
+		return value == null ? null : value.toString();
 	}
 
 	private static Map<CourtLevel, Long> sortByRank(Map<CourtLevel, Long> counts) {

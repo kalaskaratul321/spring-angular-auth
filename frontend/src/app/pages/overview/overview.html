@@ -1,0 +1,87 @@
+<main class="page">
+  <header class="head">
+    <div>
+      <h1>Case knowledge graph</h1>
+      <p class="muted">Judgments from the High Court down to Sessions and trial courts, grouped by category.</p>
+    </div>
+    @if (summaries()) {
+      <div class="stat">
+        <span class="num">{{ total().toLocaleString() }}</span>
+        <span class="muted">cases</span>
+      </div>
+    }
+  </header>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  } @else if (!summaries()) {
+    <p class="muted">Loading…</p>
+  } @else if (total() === 0) {
+    <section class="card empty-state">
+      <h2>No cases yet</h2>
+      <p>Import judgments with <code>POST /api/kg/import</code>, load the sample data with
+        <code>POST /api/kg/cases/bulk</code>, or enable a harvest source.</p>
+    </section>
+  } @else {
+    <section class="grid">
+      @for (s of withCases(); track s.category) {
+        <a class="card cat" [routerLink]="['/explorer']" [queryParams]="{ category: s.category }"
+           [style.--cat]="colors[s.category]">
+          <div class="cat-head">
+            <span class="swatch" aria-hidden="true"></span>
+            <h2>{{ s.displayName }}</h2>
+            <span class="count">{{ s.totalCases.toLocaleString() }}</span>
+          </div>
+
+          <h3>By court</h3>
+          <ul class="bars">
+            @for (b of levels(s); track b.level) {
+              <li>
+                <span class="bar-label">{{ b.label }}</span>
+                <span class="bar"><span [style.width.%]="b.pct"></span></span>
+                <span class="bar-num">{{ b.count }}</span>
+              </li>
+            }
+          </ul>
+
+          @if (verdicts(s).length) {
+            <h3>Verdicts</h3>
+            <div class="chips">
+              @for (v of verdicts(s); track v.label) {
+                <span class="chip">{{ v.label }} <b>{{ v.count }}</b></span>
+              }
+            </div>
+          }
+
+          @if (top(s.topStatutes).length) {
+            <h3>Top statutes</h3>
+            <div class="chips">
+              @for (t of top(s.topStatutes); track t.key) {
+                <span class="chip">{{ t.key }} <b>{{ t.count }}</b></span>
+              }
+            </div>
+          }
+
+          @if (top(s.topIssues, 3).length) {
+            <h3>Frequent issues</h3>
+            <ul class="issues">
+              @for (t of top(s.topIssues, 3); track t.key) {
+                <li>{{ t.key }} <span class="muted">({{ t.count }})</span></li>
+              }
+            </ul>
+          }
+          <span class="open">Open graph →</span>
+        </a>
+      }
+    </section>
+
+    @if (empty().length) {
+      <p class="muted small">
+        No cases yet in:
+        @for (s of empty(); track s.category; let last = $last) {
+          {{ s.displayName }}{{ last ? '' : ', ' }}
+        }
+      </p>
+    }
+  }
+</main>

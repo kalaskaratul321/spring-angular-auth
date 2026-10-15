@@ -25,3 +25,11 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 }
+
+test {
+	testLogging {
+		// Print exception messages and causes in CI logs, not just class names.
+		exceptionFormat = 'full'
+		events 'failed'
+	}
+}

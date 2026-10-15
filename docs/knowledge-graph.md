@@ -1,5 +1,8 @@
 # MahaLegal case knowledge graph
 
+A web UI for exploring the graph lives in `frontend/` (Angular); see
+`frontend/README.md`.
+
 A graph of judgments from the Bombay High Court down to Sessions, Magistrate,
 Civil Judge and quasi-judicial forums, grouped by practice-area category.
 

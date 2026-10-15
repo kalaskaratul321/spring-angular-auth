@@ -17,7 +17,7 @@ public interface LegalCaseRepository extends MongoRepository<LegalCase, String> 
 
 	boolean existsBySourceUrl(String url);
 
-	LegalCase findFirstBySourceSha256(String sha256);
+	LegalCase findFirstBySource_Sha256(String sha256);
 
 	Page<LegalCase> findByCategory(CaseCategory category, Pageable pageable);
 

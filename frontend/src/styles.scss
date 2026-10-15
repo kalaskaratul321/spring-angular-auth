@@ -1,0 +1,99 @@
+/* Theme tokens: light by default, dark when the OS prefers it. */
+:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --hover: #f1f5f9;
+  --accent: #1d4ed8;
+  --accent-soft: #e0e7ff;
+  --danger: #b91c1c;
+  --shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  --shadow-hover: 0 4px 14px rgb(0 0 0 / 10%);
+  --graph-text: #1f2937;
+  --graph-halo: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --surface: #171a21;
+    --text: #e5e7eb;
+    --muted: #9ca3af;
+    --border: #2a2f3a;
+    --hover: #222733;
+    --accent: #93b4ff;
+    --accent-soft: #1e2a4a;
+    --danger: #f87171;
+    --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-hover: 0 4px 14px rgb(0 0 0 / 50%);
+    --graph-text: #e5e7eb;
+    --graph-halo: #171a21;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.45;
+}
+a { color: var(--accent); }
+code { font-size: 0.9em; background: var(--hover); padding: 1px 4px; border-radius: 4px; }
+.page { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+}
+.muted { color: var(--muted); }
+.error { color: var(--danger); }
+input, select, button, .button { font: inherit; }
+input, select {
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  min-width: 0;
+}
+input:focus-visible, select:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+button, .button {
+  padding: 7px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); font-weight: 600; }
+.ghost { background: transparent; }
+.ghost:hover:not(:disabled) { background: var(--hover); }
+button.small { padding: 3px 8px; font-size: 0.8rem; }
+button.link {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  text-align: left;
+  display: inline;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+@media (max-width: 640px) {
+  .page { padding: 16px; }
+}
