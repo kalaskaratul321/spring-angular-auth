@@ -128,7 +128,7 @@ public class JudgmentImportService {
 		}
 
 		if (existing == null) {
-			LegalCase sameFile = caseRepository.findFirstBySourceSha256(doc.getSha256());
+			LegalCase sameFile = caseRepository.findFirstBySource_Sha256(doc.getSha256());
 			if (sameFile != null) {
 				result.setStatus(ImportResult.Status.DUPLICATE);
 				result.setLegalCase(sameFile);
